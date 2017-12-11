@@ -1,0 +1,172 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+    <head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>UNIX のフォント事情</title>
+		<link rel="stylesheet" href="/default.css">
+    </head>
+<body>
+
+<h1>UNIX のフォント事情</h1>
+
+<p><em class="warning">2016-07-21: このページの記述は古いうえに、（当初から）致命的に間違っている箇所があります。</em></p>
+<p>今のところ気づいているのは、</p>
+<ul>
+	<li>ヒンティングの強弱と LCD レンダリングモードの直交した指定ができないというのは大嘘。当時から <a href="https://www.freetype.org/freetype2/docs/reference/ft2-base_interface.html#FT_LOAD_TARGET_XXX">FreeType のリファレンス</a>にちゃんと説明がある。</li>
+	<li>Firefox のレンダリングは cairo に移行済。</li>
+	<li>LCD フィルタは freetype 側に実装され、現在では多くの環境で適切に使用されている。</li>
+	<li>cairo で hintstyle の設定が無視される問題は <a href="https://bugs.freedesktop.org/show_bug.cgi?id=11838">Bugzilla</a> を見る限りまだ残っているように思えるけれど、手元で試した感じでは反映されているような…。気のせいかも（適当）。</li>
+	<li>pango は <a href="https://www.freedesktop.org/wiki/Software/HarfBuzz/">HarfBuzz</a> に移行。</li>
+	<li>TrueType のバイトコードヒンティングは、 <a href="http://lists.nongnu.org/archive/html/freetype-devel/2016-07/msg00091.html">2.6.4 で水平方向のヒンティング命令を無視する処理が追加</a>され、サブピクセルサンプリング時にも適切にヒンティングが行われるようになった。</li>
+</ul>
+<p>特に一番目については内容が古くなったのではなく私の勘違い。すいません。</p>
+
+<p>*</p>
+
+<p>「 Linux はフォントが綺麗だ」という人は多いです。本当にそうでしょうか。綺麗だと思う人は Acrobat Reader のレンダリング結果と比べてみましょう。かなり汚いのが分かるはずです。実際、 Windows や Mac OS X と比べても綺麗とは言えません。 X-Window のフォント周りは多くの問題を抱えています。</p>
+
+<h2>X-Window のフォントシステム</h2>
+<p>X-Window のフォントシステムは大きく分けて 2 種類あります。</p>
+
+<h3>Xcore</h3>
+<p>昔から X-Window に備わっているフォントシステム。 X サーバ側でラスタライズを行います。アンチエイリアスなどは不可能。 "-misc-fixed-r-normal..." みたいなフォント指定をするのはこれです。今回は触れません。</p>
+
+<h3>freetype &amp; cairo, Xft &amp; Xrender, glitz...</h3>
+<p>新しいフォントシステム。クライアント側でラスタライズを行います。アンチエイリアスが可能。 GTK2, Qt を用いたソフトウェアのほんどは、こちらを利用しています。いくつかのライブラリからなっており、分担は以下の通りです。</p>
+<dl>
+	<dt>cairo</dt>
+	<dd>グラフィックスライブラリ</dd>
+	<dt>pango</dt>
+	<dd>組版ライブラリ</dd>
+	<dt>freetype</dt>
+	<dd>フォントラスタライザ</dd>
+</dl>
+<p>ちなみにあまり知られていない気もしますが、 Xft は既に obsolete です。 cairo はフォントレンダリングに Xft を使用しません。（ただし obsolete とは言っても Firefox を筆頭に、 Xft を使っているプログラムは多くあります）</p>
+
+<h2>フォントのラスタライズに関する一般的な話</h2>
+<p>フォントのラスタライズとは一言でいえば、ベクトルデータをラスタデータに落とすことです。</p>
+<p>Truetype フォントは二次、 Type1 フォントは三次のパラメトリック曲線で構成されています。ベジェ曲線とか B スプライン曲線とか言われるやつです。 Illustlator などのドロー系ソフトを思い浮かべれば分かり易いと思います。ここで終われば話は楽(?)なのですが、フォント特有の処理がいくつかあり、それが品質を大きく左右します。</p>
+
+<h3>ヒンティング</h3>
+<p>フォントは小さな領域に複雑な形状を含みます。とくに一般的な PC のディスプレイはせいぜい 100 px/inch 程度で、形状の複雑さに対して十分な数の画素が対応しません。そのまま二値のラスタデータに落とすと、見るに耐えないガタガタの画像が出力されてしまいます。そのため、あらかじめベクトルデータをグリッドにフィットさせるような処理が必要です。これがヒンティングと呼ばれる処理です。実際には単純なフィッティングではなく、線の太さや間隔が一定になるように、など細かい処理が行われます。行われていると思います。たぶん。僕はヒンティングの詳細を知りません。ごめんなさい。</p>
+<p>TrueType フォントはこの処理を行うため、なんと VM のコードを積んでいます（参考: <a href="http://developer.apple.com/textfonts/TTRefMan/RM05/Chap5.html">http://developer.apple.com/textfonts/TTRefMan/RM05/Chap5.html</a> ）。 PostScript のことを考えれば、それほど驚くことでもないのかもしれませんが、やっぱり恐ろしい。 freetype は後述する特許の関係で、この情報を無視して自分でヒント情報を生成する機構を持っています。</p>
+<p>ただ個人的には、後述のγ補正をきちんと行えば、もうヒンティングは不必要な処理ではないかと思っています。実際、 Mac OS X や Adobe Flash のフォントエンジンはヒンティングを行っていないようです。</p>
+
+<h3>カーニング</h3>
+<p>一般にフォントは各文字ごとに幅が異なります。さらに "VA" と "XV" を見ると分かるように、文字の組み合わせによっても間隔は変化します。場合によっては一部が隣の文字に食い込むこともあります。このフォントの組み合わせごとに間隔を変える処理がカーニングです。上述のヒンティングによってフォントの幅が変わるなど、ヒンティングとカーニング処理は密接に関わっています。この情報はフォントに含まれています。</p>
+
+<h3>サブピクセルサンプリング</h3>
+<p>Microsoft の ClearType, Adobe の CoolType と同義です。液晶ディスプレイなどは、画素が "R G B R G B..." と横に並んでいます。これを利用して、横方向の解像度を擬似的に上げる技術です。</p>
+<p>単純に横方向の画素数を三倍にしてサブピクセルに割り当てるだけではエッジに色が付き、使い物になりません。そのため、 RGB が局所的に均等になるよう分散させるフィルタをかけます（参考: <a href="http://www.grc.com/cttech.htm">http://www.grc.com/cttech.htm</a>）。このフィルタはローパスフィルタとして働くため、サブピクセルサンプリングの宣伝文句である「解像度が三倍」というのは正しくなかったりします。 cairo, Xft は特許の関係もあり、正しいフィルタリングが行われていません。</p>
+
+<h3>ガンマ補正</h3>
+<p>CRT ディスプレイの画素は入力に比例した明るさで光るわけではありません。具体的には</p>
+<pre>
+dst = src ^ 2.2
+</pre>
+<p>の関係があります（正確には 0 付近での補正が入ります）。この 2.2 という値は <a href="http://www.w3.org/Graphics/Color/sRGB">sRGB</a> という規格で標準化されていて、ある程度のグレードのディスプレイは、このカーブを再現するように作られています。アンチエイリアスのかかったフォントのレンダリングはこのガンマカーブを考慮して行われなければなりません。ガンマ補正を考慮した場合としない場合とでは、中間値で 127 ⇔ 186 と大きな違いがあります。</p>
+<p>これはもちろんフォント固有の問題ではありません。しかし、普通の図形描画ではこの補正をしなくてもあまり影響はないのに対し、少ないピクセルに複雑な図形が描かれるフォントレンダリングでは視覚的に大きく影響します。</p>
+
+<h2>X-Window のフォントが汚い理由</h2>
+<p>さて本題です。</p>
+<ul>
+	<li>ヒンティングの問題</li>
+	<li>サブピクセルサンプリングの問題</li>
+	<li>ガンマ補正の問題</li>
+	<li>実装上の問題</li>
+</ul>
+
+<h3>ヒンティングの問題</h3>
+<p>上述のようにヒンティングに必要な情報はフォントが持っていますが、特許の関係で freetype はこの情報を利用せず、自分でヒント情報を生成する機構を持っています。この生成機構自体はなかなか優秀で、フォントが持っているヒント情報よりもずっと良い結果を出すことも多いです。しかし現状、 fonts.conf の設定をいじる程度ではこの機構を十分に生かせません。ヒンティングのアルゴリズム自体は優秀のようですが、渡しているオプションが適切でないように思います。後述するように freetype への情報の受け渡し部分にも問題があるのですが。</p>
+<p>また、サブピクセルサンプリング有効時はヒンティングもサブピクセル単位で行われるべきですが、現状ピクセル単位で行われています。これではサブピクセルサンプリングの意味がありません。これも問題です。</p>
+
+<h3>サブピクセルサンプリングの問題</h3>
+<p>freetype &amp; cairo, Xft でサブピクセルサンプリングを有効にすると、色づきが激しくて使いものになりません。これは cairo, Xft でのフィルタリング処理が正しくないからです。ここにも特許の問題が絡んでいてややこしいのですが、 freetype-2.3 以降には正しいフィルタが実装されています。ただし cairo, Xft はこれを利用していません。 freetype の開発者の一人、 David Turner 氏が非公式にパッチを出し、 cairo の ML にも投稿していますが、採り入れられた形跡はありません。</p>
+
+<h3>ガンマ補正の問題</h3>
+<p>現状 cairo, Xft ではガンマ補正が行われていません。個人的にフォントが汚く見える一番の原因はこれだと思っているので、ぜひとも実装したいところです。しかし実は、 cairo, Xft のレイヤでガンマ補正を実装することはできません。</p>
+
+<p>ガンマ補正は</p>
+<pre>
+fg : 前景色
+bg : 背景色
+α : フォントのラスタデータ
+dst = ( fg^γ * α + bg^γ * (1-α) ) ^ (1/γ)
+</pre>
+<p>という式になります。ここで問題なのは、前景色、背景色を知っていないと補正ができないことです。 cairo の Xrender バックエンドは、サーバにラスタデータを転送しておいてサーバ側で合成するため、背景色を知ることができません。<em>原理上 cairo でガンマ補正はできない</em>のです。ガンマ補正を正確に実装するためには X サーバに手を入れる必要があります。誰かやりませんか…。</p>
+<p>またガンマ補正を入れる場合、もとの線形な情報は 8-bit では全然足りないという問題もあります。</p>
+
+<h3>実装上の問題</h3>
+<p><em class="warning">ここの記述は間違いです。</em> <a href="https://www.freetype.org/freetype2/docs/reference/ft2-base_interface.html#FT_LOAD_TARGET_XXX">FreeType のリファレンス</a>にある通り、 FT_Load_Glyph() と FT_Render_Glyph() に異なる値を指定することで直交した指定が可能です。</p>
+<p><del>freetype, cairo のソースを見れば分かるのですが、なかなかの汚さです（オープンソースプロジェクトは大抵汚い、という話もありますが。暴言? ）。特に cairo はそう感じます。 API は綺麗で使いやすいのに…。それはともかく、明らかに開発者の意図通り動いていないところ、開発者自身も理解して書いていないのではないかと思えるところがたくさんあります。コアは優秀なのに正しく使われていないために、残念な結果が出ているように思います。分かり易い例だと、</del></p>
+<pre>
+/usr/*/include/freetype/freetype.h:
+
+typedef enum  FT_Render_Mode_
+{
+    FT_RENDER_MODE_NORMAL = 0,
+    FT_RENDER_MODE_LIGHT,
+    FT_RENDER_MODE_MONO,
+    FT_RENDER_MODE_LCD,
+    FT_RENDER_MODE_LCD_V,
+
+    FT_RENDER_MODE_MAX
+
+} FT_Render_Mode;
+</pre>
+<p><del>NORMAL, LIGHT の指定と LCD, LCD_V の指定は本来直交しているはずです。しかしこの定義では同時に指定することができません。いまさら変更できませんが。さらに問題なのは、開発者がこのことを理解していないと思われるコードがある（ FT_RENDER_MODE_NORMAL | FT_RENDER_MODE_LCD ）のような指定を行っている部分がある）ことです。ちなみに、 cairo では LIGHT の指定は無条件に無視されてしまいます。</del></p>
+
+<h2>そんなこんなで</h2>
+<p>土日を潰してコードを追っていたのですが、一番の目的だったガンマ補正を実装できないことに気づいてガッカリです。代わりにヒンティング周りの改善がうまくいったので、パッチをおいておきます。</p>
+<ul>
+	<li><a href="/src/freetype-2.3.5-improved.patch">freetype-2.3.5-improved.patch</a></li>
+	<li><a href="/src/cairo-1.4.10-improved.patch">cairo-1.4.10-improved.patch</a></li>
+	<li><a href="/src/libXft-2.1.12-improved.patch">libXft-2.1.12-improved.patch</a></li>
+</ul>
+<p>[[ここにスクリーンショット]]</p>
+<p>パッチの内容は</p>
+<ul>
+	<li>正しいフィルタの実装（ Turner 氏のパッチを最新版に当たるようにしたもの）</li>
+	<li>フィルタをハニング窓ライクに変更</li>
+	<li>オートヒンティング時の各種オプションの調整</li>
+	<li>cairo のバグフィックス</li>
+	<li>ついでに freetype のバイトコードヒンティングなどを有効化</li>
+</ul>
+<p>などなど。このうち cairo, Xft パッチの中身はほとんど Turner 氏のパッチです。ただしバグフィックスを含んでいるので、必ず全てのパッチを当ててください。 autohint=true, hintstyle=slight での使用を強く推奨します。</p>
+<p>fonts.conf の例:</p>
+<dl>
+	<dt>LCD 向け</dt>
+	<dd><a href="/src/fonts-lcd.conf">fonts-lcd.conf</a></dd>
+	<dt>CRT 向け</dt>
+	<dd><a href="/src/fonts-crt.conf">fonts-crt.conf</a></dd>
+</dl>
+<p>通常は ~/.fonts.conf に置けば読み込まれますが、 Linux のディストリビュージョンによっては fonts.conf がカスタマイズされていて、うまく設定が反映されないかもしれません。</p>
+
+<h3>TODO</h3>
+<ul>
+	<li>advance がピクセル単位になっている?</li>
+	<li>TrueType フォントのバイトコードヒンティング時に、ヒンティングがサブピクセル単位になっていない</li>
+</ul>
+
+<h2>最後に</h2>
+<p>あまりフォント周りのことを簡潔にまとめてある文章がないと以前から感じていたので、ちょっと書いてみました。フォントのレンダリングは、普通の人が思っているよりずっと複雑なものです。僕も上に書いた程度の表面的なことしか知りませんが、実際にはベジェ曲線のラスタライズ一つとってみても、多種多様なアルゴリズムが提唱されているはずです。ほとんどの人にとっては、その内容を知ったところで何の得にもなりませんが、「たかがフォント」にも様々な技術が使われていることを知っていただければ幸いです。</p>
+
+<h2>参考</h2>
+<dl>
+	<dt><a href="http://antigrain.com/research/font_rasterization/index.html">http://antigrain.com/research/font_rasterization/index.html|</a></dt>
+	<dd>より細かい話が載っています。この文章を書いた後に見つけたのですが、これがあれば僕の文章は必要なかったんじゃ…。</dd>
+	<dt><a href="http://lists.gnu.org/archive/html/freetype/2007-07/msg00007.html">http://lists.gnu.org/archive/html/freetype/2007-07/msg00007.html</a></dt>
+	<dd>
+		freetype の ML より。ほとんど ML は読んでいないのですが、たまたま目に入ったので紹介。後半、 Turner 氏が「もし時間とやる気があったら…」という感じで改善したい項目を列挙した後、
+		<blockquote><p>Alas, I lack the time and motivation to do all this work. (中略) I have provided many patches in the past that are mostly ignored by the corresponding library's maintainers (but are surprisingly included by distribution package managers), and I'm quite tired of this.</p></blockquote>
+		あと、このメールに X サーバに手を入れないとガンマ補正は無理だと書いてありますね。ソース追う必要なんてなかった…。
+	</dd>
+	<dt><a href="http://developer.apple.com/textfonts/TTRefMan/">http://developer.apple.com/textfonts/TTRefMan/</a></dt>
+	<dd>TrueType フォントの仕様書。読んでないけどヒンティングが凄まじいことは分かった。</dd>
+</dl>
+
+<p><a href="../">戻る</a></p>
+<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

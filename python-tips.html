@@ -1,0 +1,178 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+    <head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <title>Python Tips</title>
+        <link rel="stylesheet" href="/default.css">
+    </head>
+<body>
+
+
+<h1>Python Tips</h1>
+
+<h2>内包表記とλ式</h2>
+<pre>
+&gt;&gt;&gt; fs = [ lambda: i for i in range(8) ]
+&gt;&gt;&gt; fs[2]()
+7
+</pre>
+<p>各 i ごとにクロージャが生成されるのではなく、ひとつのクロージャで i の値が書き換えられるため、このような結果になる。これは期待した動作ではないと思う。</p>
+<p>同じ問題は for ループでも起こる。</p>
+<pre>
+&gt;&gt;&gt; for i in range(8):
+...     fs.append( lambda: i )
+...
+&gt;&gt;&gt; fs[2]()
+7
+</pre>
+<p>これは、デフォルト引数をうまく使えば回避できる。</p>
+<pre>
+&gt;&gt;&gt; fs = [ lambda i=i: i for i in range(8) ]
+&gt;&gt;&gt; fs[2]()
+2
+</pre>
+
+<h2>デフォルト引数</h2>
+<p>これは Tutorial にも載っているけど。</p>
+<pre>
+&gt;&gt;&gt; def f(xs = []):
+...     xs.append(0)
+...     print xs
+&gt;&gt;&gt; f()
+[0]
+&gt;&gt;&gt; f()
+[0, 0]
+</pre>
+
+<h2>GC</h2>
+<p><del>CPython の GC は参照カウントを主に用いているので、（循環参照が発生しなければ）ファイルのクローズなどをデストラクタに任せることができる。</del></p>
+<pre>
+&gt;&gt;&gt; data = file("hoge", "r").read()
+</pre>
+<p><del>上のプログラムで、 file オブジェクトは次の行が実行される前に必ず回収され、ファイルのクローズも行われる、ということ。</del></p>
+<p><strong>最近は CPython 以外の実装も普及してきて、それらの処理系が参照カウントを使っている保証はないので、 with 文などを用いて確実にデストラクトされるようにすべきです。すいません。</strong></p>
+<p>デストラクタを持つオブジェクトが循環参照に含まれる場合の GC の動作は言語によってまちまちだが、 Python では原則としてそれらのオブジェクトは開放しない。回収されなかったオブジェクトは <code>gc.garbage</code> に保存される。</p>
+<p><a href="http://www.python.jp/doc/nightly/lib/module-gc.html">http://www.python.jp/doc/nightly/lib/module-gc.html</a></p>
+
+<h2>modulo</h2>
+<pre>
+&gt;&gt;&gt; (-3) % 2
+1
+&gt;&gt;&gt; 3 % (-2)
+-1
+&gt;&gt;&gt; (+1) / 3
+0
+&gt;&gt;&gt; (-1) / 3
+-1
+</pre>
+<p>負数に対する剰余演算の結果は C などでは環境依存で、例えば x86 （たぶんほとんどのアーキテクチャでそうなんだろうけど）なら <code>(-3) % 2 == -1</code> だけど、 Python では上記のように少し気の利いた動作になっている。これと consistent なように、除算に関しても 0 に近い整数に丸められるのではなく、小さい整数に丸められる(!)。</p>
+<p>これ、便利なことも多いのだけど、代償として、</p>
+<pre>
+(-a) / b != -(a / b)
+(-a) % b != -(a % b)
+</pre>
+<p>なので、気を付けるべし。怖っ。</p>
+
+<h2>StopIteration</h2>
+<p>イテレータの <code>next()</code> メソッドは、列挙する要素がなくなって <code>StopIteration</code> 例外を送出したあとは、以降の呼び出しでもずっと例外を送出しつづけるように実装すべき。</p>
+<p><a href="http://www.python.jp/doc/nightly/lib/typeiter.html">http://www.python.jp/doc/nightly/lib/typeiter.html</a></p>
+
+<h2>class 周りの動作が謎</h2>
+<p><code>staticmethod, classmethod, property</code> とか、 <code>__metaclass__</code> とか。</p>
+<p>…これらは v2.2 で導入された new-style class に関連している。詳細は <a href="http://www.python.org/download/releases/2.2/descrintro/">Unifying types and classes in Python 2.2</a> にまとまっている。言語ヲタクが Python を習得する際には必修事項 :-)</p>
+
+<h2>定数文字列の最適化</h2>
+<pre>
+&gt;&gt;&gt; a = "short"
+&gt;&gt;&gt; b = "short"
+&gt;&gt;&gt; a is b
+True
+&gt;&gt;&gt; a = "long text"
+&gt;&gt;&gt; b = "long text"
+&gt;&gt;&gt; a is b
+False
+</pre>
+<p>短い文字列は最適化でまとめられるらしい。</p>
+
+<h2>組み込み関数の範囲内で簡易文字コード判別</h2>
+<pre>
+encodings = [
+    "iso-2022-jp",
+    "utf-8",
+    "euc-jp",
+    "cp932",
+]
+
+
+def detect( text ):
+    bestScore = -1
+    bestEnc = None
+    for enc in encodings:
+        try:
+            unicode( text, enc )
+        except UnicodeDecodeError, err:
+            if err.end &gt; bestScore:
+                bestScore = err.end
+                bestEnc = enc
+        else:
+            return {
+                "encoding": enc,
+                "confidence": 1.0,
+            }
+
+    return {
+        "encoding": bestEnc,
+        "confidence": bestScore / (bestScore + 2.0),
+    }
+</pre>
+<p>Download: <a href="/src/chardet.py">chardet.py</a></p>
+<p><a href="http://chardet.feedparser.org/">chardet</a>という素晴らしい文字コード判定ライブラリがあるが、ちょっと使うには大げさで、速度もかなり遅い。文字コードがある程度限定されているなら、 unicode() 関数で成功するまで変換してみるという方法で文字コード判別ができる。 chardet よりずっと速かったり。</p>
+<p>上のコードは chardet とインターフェイスを合わせてあるので、 chardet をインストールするかわりに chardet.py を置くだけで使える。ただし confidence の値は適当気味。</p>
+
+<h2>複数の *.py を直接実行可能な 1 ファイルにまとめる</h2>
+<p>CPython は zip ファイルをインポートできて (<a href="http://docs.python.org/library/zipimport.html">zipimport</a>) 、さらに __main__.py がアーカイブ内にあると python archive.zip したときにそれが実行される。また一方で zip ファイルはヘッダを尻に持っていて、ファイルの先頭にゴミがついていても問題なく読み込める。そこで、</p>
+<pre>
+$ echo "#!/usr/bin/env python" > executable
+$ app.zip >> executable
+$ ./executable
+</pre>
+<p>とすれば、直接実行可能なファイルが作れる。</p>
+
+<h2>asyncore を socket 以外で使う</h2>
+<p>ドキュメントを読むと、 asyncore は socket にしか使えないように思えるが、実際にはファイルオブジェクト全般に使える。基本的には、 asyncore.socket_map にファイルディスクリプタとオブジェクトを追加しておくと、適当なメソッドが呼ばれるシンプルな仕組み。以下 stdin での例:</p>
+<pre>
+import os
+import fcntl
+import asyncore
+
+class AsynStdin( object ):
+    def __init__( self, map = asyncore.socket_map ):
+        fcntl.fcntl( sys.stdin, fcntl.F_SETFL, os.O_NONBLOCK )
+        map[sys.stdin.fileno()] = self
+
+    def readable( self ):
+        return True
+
+    def writable( self ):
+        return False
+
+    def handle_read_event( self ):
+        pass # Do something...
+</pre>
+
+<h2>Python 2.6, 2.7 にバックポートされている 3.x の機能を有効化する</h2>
+<pre>
+from __future__ import (
+    division,
+    absolute_import,
+    print_function,
+    unicode_literals,
+)
+from future_builtins import *
+</pre>
+
+<p><a href="../">戻る</a></p>
+<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>sendmail on FreeBSD の息の根を止める</title>
+		<link rel="stylesheet" href="/default.css">
+	</head>
+<body>
+
+<h1>sendmail on FreeBSD の息の根を止める</h1>
+<p>FreeBSD をインストールするとデフォルトで sendmail が起動する設定になっている。これは cron などから起動されるプログラムの一部が root へのメールで情報を送るからなのだけど、まあデスクトップ用途ではちと大げさだし、止められるなら止めたいよね、というありがちなミニマリスト精神を発揮した記録。</p>
+<p>以下、試した環境は FreeBSD 7.x 。基本的に sendmail を使うプログラムを手作業で探しただけなので、漏れがある可能性高し。</p>
+
+<h2>設定方法</h2>
+<p>面倒くさくなったので結果だけ。</p>
+<pre>
+=== /etc/rc.conf
++ sendmail_enable=NO
++ sendmail_submit_enable=NO
++ sendmail_outbound_enable=NO
++ sendmail_msp_queue_enable=NO
++ virecover_enable=NO
+
+=== /etc/crontab
++ MAILTO=""
+
+=== /etc/periodic.conf
++ daily_output="/var/log/daily.log"
++ daily_status_security_output="/var/log/security"
++ weekly_output="/var/log/weekly.log"
++ monthly_output="/var/log/monthly.log"
+</pre>
+<p>上記の /var/log/* に対してはデフォルトでログのローテートの設定がなされている(!)ので、そのへんの設定はとりあえず必要ない。</p>
+<p>また、毎日のセキュリティチェックが必要なければ、</p>
+<pre>
+=== /etc/periodic.conf
++ daily_status_security_enable=no
++ daily_status_security_inline=yes
+</pre>
+<p>と設定して、必要なときに手動で</p>
+<pre>
+$ periodic security
+</pre>
+<p>を実行してもいい。</p>
+
+<h2>参考</h2>
+<ul>
+	<li>man rc.sendmail</li>
+	<li>man periodic.conf</li>
+	<li>cat /etc/rc.d/virecover</li>
+	<li>cat /etc/defaults/periodic.conf</li>
+	<li>cat /etc/newsyslog.conf</li>
+</ul>
+
+<h2>ちなみに</h2>
+<p>毎日 3:00 に HDD がガリガリするのは</p>
+<pre>
+/etc/periodic/security/100.chksetuid
+</pre>
+<p>が原因。そうだったんだ…。ずっと locate のデータベースをアップデートしていると思いこんでいたよ。これは次の設定で止められる。</p>
+<pre>
+=== /etc/periodic.conf
++ daily_status_security_chksetuid_enable=NO
+</pre>
+
+<p><a href="../">戻る</a></p>
+<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

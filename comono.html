@@ -1,0 +1,121 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+    <head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>仮置</title>
+		<link rel="stylesheet" href="/default.css">
+    </head>
+<body>
+
+
+<h1>仮置</h1>
+<p>主に ~/tmp から救出したもの。とくに断りがなければソースは public domain 。</p>
+
+
+<h2 id="python">Python から C++ ファイルを直接インポート</h2>
+<p>Download: <a href="./src/cpp.py">cpp.py</a></p>
+<pre>
+test.py:
+    import cpp
+    import adder # addr.cpp を自動的にコンパイルしてインポート。
+
+    print adder.add(1, 2) # -&gt; 3
+
+adder.cpp:
+    #include &lt;boost/python.hpp&gt;
+
+    int add(int x, int y)
+    {
+        return x + y;
+    }
+
+    BOOST_PYTHON_MODULE(adder)
+    {
+        boost::python::def("add", add);
+    }
+</pre>
+<p>とりあえず UNIX 系 OS 上でのみ、 c++ -MM にて依存関係を調べ、必要なときだけコンパイルするようになっている。</p>
+<p>cpp.compiler が <a href="http://www.python.jp/doc/nightly/dist/module-distutils.ccompiler.html">distutils.ccompiler.CCompiler</a> のインスタンスなので、ライブラリの追加等はこれをいじる。 boost_python-mt は追加済み。</p>
+
+
+<h2 id="numarray">boost.python の numarray 拡張</h2>
+<p>Download: <a href="./src/numarray.hpp">numarray.hpp</a></p>
+<p>boost::python::numeric とは違い、必要に応じて連続な配列を作るので、配列へ直にアクセス可能。インターフェイスの詳細は numarray.hpp の冒頭コメントに。</p>
+<pre>
+arr_sum.cpp:
+    #include &lt;boost/python.hpp&gt;
+    #include "numarray.hpp"
+
+    int sum(cnumarray_in&lt;int&gt; arr)
+    {
+        int s = 0;
+        for(int i = 0; i &lt; arr.shape(0); ++i)
+        {
+            s += arr[i];
+        }
+
+        return s;
+    }
+
+test.py:
+    import arr_sum
+    arr = numarray.array([1, 2, 3])
+    print arr_sum.sum(arr) # -&gt; 6
+</pre>
+
+
+<h2 id="hrtf">各種 HRTF（頭部伝達関数）を wave ファイルに変換</h2>
+<dl>
+	<dt><a href="http://sound.media.mit.edu/KEMAR.html">MIT Media Lab.</a> : compact.tar.Z</dt>
+	<dd>Download: <a href="./src/towave_mi.py">towave_mi.py</a></dd>
+	<dt><a href="http://www.ais.riec.tohoku.ac.jp/lab/db-hrtf/">鈴木研究室</a> : sub?.tar.gz</dt>
+	<dd>Download: <a href="./src/towave_sz.py">towave_sz.py</a></dd>
+	<dt><a href="http://audio.nagaokaut.ac.jp/hrtf/">島田研究室</a> : samrai*.tar.gz, subject*.tar.gz</dt>
+	<dd>Download: <a href="./src/towave_sm.py">towave_sm.py</a></dd>
+	<dt><a href="http://www.itakura.nuee.nagoya-u.ac.jp/HRTF/">板倉研究室</a> : data02.tgz</dt>
+	<dd>Download: <a href="./src/towave_it.py">towave_it.py</a></dd>
+</dl>
+<p>Python と numarray が必要。解凍したディレクトリで実行すると wave ファイルが生成されるはず。<a href="http://www.knufinke.de/sir/index_en.html">SIR</a> とかで畳み込んでほげほげするなど。</p>
+
+
+<h2 id="freetype">freetype で sub-pixel sampling を有効にしたときの色付きを改善するパッチ</h2>
+<p><del>Download: <a href="./src/freetype-2.2.1-filter.patch">freetype-2.2.1-filter.patch</a> / <a href="./src/fonts.conf">fonts.conf の例</a></del></p>
+<p class="figure"><img src="./img/freetype.png"></p>
+<p><del><a href="http://www.grc.com/cttech.htm">これ</a>を実装してみたもの。このパッチを当てると、 rgba = rgb, bgr 以外ではまともに使えなくなる。 autohinter の利用を推奨。 hintstyle は強制的に hintslight 相当になる。ちなみに、上のスクリーンショットの日本語フォントは <a href="http://mplus-fonts.sourceforge.jp/mplus-outline-fonts/index.html">M+ 1p</a> 。</del></p>
+<p>もう上のパッチは古いです。 freetype の開発者 David Turner 氏による<a href="http://freetype.sourceforge.net/freetype2/patches/rogue-patches.html">非公式パッチ</a>があります。これに加えて、</p>
+<ul>
+	<li>オートヒンティング時の各種オプションを調整。（サブピクセルサンプリング時は横方向のヒンティングを行わない、など）</li>
+	<li>LCD フィルタをハニング窓ライクに変更。</li>
+	<li>cairo で hintstyle の設定が無視されるバグの修正。</li>
+</ul>
+<p>を行ったパッチを置いておきます。</p>
+<ul>
+	<li><a href="./src/freetype-2.3.5-improved.patch">freetype-2.3.5-improved.patch</a></li>
+	<li><a href="./src/cairo-1.4.10-improved.patch">cairo-1.4.10-improved.patch</a></li>
+	<li><a href="./src/libXft-2.1.12-improved.patch">libXft-2.1.12-improved.patch</a></li>
+	<li><ul>
+		<li><a href="./src/fonts-lcd.conf">LCD 向け fonts.conf</a></li>
+		<li><a href="./src/fonts-crt.conf">CRT 向け fonts.conf</a></li>
+	</ul></li>
+</ul>
+
+
+<h2 id="mlterm">mlterm の再描画高速化パッチ</h2>
+<p>Download: <a href="./src/mlterm-fast-redraw.patch">mlterm-fast-redraw.patch</a></p>
+<p>Expose イベントの再描画を一文字単位で行い、ちらつきを抑える。縦書対応が面倒で放置していたモノ。そのうちなんとかする予定…。効果を得るためには --enable-optimize-redrawing が必須。</p>
+
+
+<h2 id="brown">Brown noise 生成</h2>
+<p>Download: <a href="./src/brown.cpp">brown.cpp</a></p>
+<p>周りの音が気になって集中できないときにどうぞ。</p>
+
+<h2 id="oggcut">Ogg コンテナを含むファイルから Ogg を切り出し</h2>
+<p>Download: <a href="./src/oggcut.py">oggcut.py</a> / <a href="./src/oggcut-win32-wzpsyco.zip">Win32 バイナリ</a></p>
+<p>複数のストリームが重なっているファイルの切り出しにも使えるはず。 -c で CRC をチェックするのでコンテナの誤認識がほぼなくなるが、 CRC の計算コードが Python なので遅い。</p>
+<p>2008/01/08: Win32 バイナリを追加。</p>
+
+<p><a href="../">戻る</a></p>
+<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

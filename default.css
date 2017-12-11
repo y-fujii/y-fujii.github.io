@@ -1,0 +1,157 @@
+@import url(//fonts.googleapis.com/css?family=Inconsolata|Source+Sans+Pro:400,700);
+
+@viewport {
+	width: device-width;
+}
+
+* {
+	margin:  0;
+	padding: 0;
+	border: none;
+	font: inherit;
+	text-decoration: none;
+}
+
+body {
+	font: 100%/1.5 'Source Sans Pro', sans-serif;
+	-webkit-hyphens: auto;
+	   -moz-hyphens: auto;
+	    -ms-hyphens: auto;
+	        hyphens: auto;
+}
+
+body:lang(ja) {
+	line-height: 1.75;
+}
+
+pre, code {
+	font-family: Inconsolata, monospace;
+	line-height: 1.5;
+	background: #f8f8f8;
+}
+
+p, h1, h2, h3, ul, ol, dl, pre, address {
+	margin: 0.5em 0;
+}
+
+p:lang(ja), h1:lang(ja), h2:lang(ja), h3:lang(ja), ul:lang(ja), ol:lang(ja), dl:lang(ja), pre:lang(ja), address:lang(ja) {
+	margin: 1em 0;
+}
+
+li, dd {
+	margin-left: 2em;
+}
+
+li > *, dt > *, dd > * {
+	margin: 0em 0em;
+}
+
+ul {
+	list-style-type: none;
+}
+
+ul > li {
+	position: relative;
+}
+
+ul > li:before {
+	position: absolute;
+	left: -0.5em;
+	content: "\00b7";
+}
+
+table {
+	margin: 1em auto;
+	border-collapse: collapse;
+}
+
+p, li, dt, dd {
+	text-align: justify;
+}
+
+p:lang(ja), li:lang(ja), dt:lang(ja), dd:lang(ja) {
+	text-justify: inter-ideograph;
+}
+
+dt:after {
+	content: ":";
+}
+
+em, strong {
+	font-weight: bold;
+}
+
+del {
+	text-decoration: line-through;
+}
+
+body {
+	max-width: 42em;
+	margin: 0 auto;
+	padding: 0 1em;
+	color: #101010;
+}
+
+h1 {
+	margin: 2em 0;
+	font-size: large;
+	text-align: right;
+}
+
+h2, h3 {
+	margin-top: 1.5em;
+	font-size: large;
+	font-weight: bold;
+}
+
+h2:lang(ja), h3:lang(ja) {
+	margin-top: 2em;
+	font-weight: normal;
+}
+
+h2 {
+	border-bottom: solid 1px #c0c0c0;
+}
+
+a {
+	color: #608020;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+address {
+	margin-bottom: 2em;
+	font-size: small;
+	text-align: right;
+}
+
+address a, address a:hover {
+	color: #101010;
+	text-decoration: none;
+	outline: none;
+	cursor: text;
+}
+
+pre, p.figure img {
+	padding: 0.5em;
+	border: solid 1px #c0c0c0;
+}
+
+p.figure {
+	text-align: center;
+}
+
+table.figure td {
+	padding: 0 0.5em;
+	border: solid 1px #c0c0c0;
+}
+
+.warning {
+	color: #ff4020;
+}
+
+a[href="../"] {
+	font-family: Inconsolata, monospace;
+}

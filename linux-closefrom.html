@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="utf-8">
+		<title>Linux 上での closefrom と async signal safety</title>
+		<link rel="stylesheet" href="./default.css">
+	</head>
+<body>
+
+<h1>Linux 上での closefrom と async signal safety</h1>
+
+<p>*BSD や OS X, Solaris には、 <code>closefrom( lowfd )</code> という「 <code>lowfd</code> 以上の値を持つファイルディスクリプタ (以下 FD) を全て閉じる」システムコールがある。一見ちょっと微妙なインターフェイスのシステムコールだけれど、実は後述する理由でとても有用である。
+<p>残念ながら Linux に <code>closefrom</code> は存在しないので、ユーザ空間で実装しようという話になるのだけど、いくつか微妙な問題がある。問題があるというか、問題があると思ったら、実は問題がなかったと言うか…。
+<p>話が二転三転するので、参考にする方は最後まで目を通してほしい。
+
+<h2>closefrom の必要性</h2>
+
+<p><code>fork()</code> 時にファイルディスクリプタを閉じる方法はいくつかある。
+<dl>
+	<dt>ファイルのオープン直後に <code>fcntl( ..., FD_CLOEXEC )</code>
+	<dd>最も古典的 (?) な方法で、移植性が高い。残念ながらマルチスレッド環境下で問題がある。 <code>open() - fcntl()</code> 間に他のスレッドで <code>fork()</code> すると、そのファイルは子プロセスで開いたままになってしまう。
+
+	<dt><code>open( ..., O_CLOEXEC )</code> <code><a href="#ref2">[2]</a></code>
+	<dd>Linux 限定（正確に言うと <code>open()</code> に関しては FreeBSD などでも使えるが、 <code>pipe2()</code> などのシステムコール新設が必要なものに関しては対応していないことが多い）。
+	<dd>また、サードパーティのライブラリ内部で <code>open()</code> している場合にこの方法は採れない。特にマルチスレッド環境下では関数内で <code>open() - close()</code> が完結していたとしても駄目。これも実用上はけっこうきつい。
+
+	<dt><code>closefrom()</code>
+	<dd>上述の問題はクリアされるが、逆にサードパーティのライブラリ内で <code>fork()</code> されると無力。また Linux には存在しない。
+</dl>
+<p>一番正統な解決策は Linux の <code>O_CLOEXEC</code> かなあと個人的には思う。ただ現実的には <code>closefrom()</code> が便利なことが多い（== 私は多かった）。そこで、 <code>closefrom()</code> を Linux でエミュレートできれば、という話になる。
+
+<h2>Linux での実装</h2>
+
+<p>Linux では <code>/proc/self/fd</code> から自プロセスの開いている FD が取得できるので、これを使ってみる。
+<pre>
+void closefrom( int lowfd ) {
+    DIR* dir = opendir( "/proc/self/fd" );
+    int dfd = dirfd( dir );
+
+    while( true ) {
+        dirent* entry = readdir( dir );
+        if( entry == nullptr ) {
+            break;
+        }
+        if( entry-&gt;d_type == DT_DIR ) {
+            continue;
+        }
+
+        int fd = atoi( entry-&gt;d_name );
+        if( fd &gt;= lowfd &amp;&amp; fd != dfd ) {
+            close( fd );
+        }
+    }
+
+    closedir( dir );
+}
+</pre>
+<p>この実装、じつは問題がある。 <code>closefrom()</code> は <code>fork()</code> と <code>exec()</code> の間で呼べないとあまり意味がないし、シグナルハンドラ内でも動いてほしいので、 async-signal-safe でなければいけない。実際に *BSD の man には、そう明記されていたはず。しかしこの実装で使っている <code>opendir()</code> は async-signal-safe ではない。
+<p>余談ながら、一般にマルチスレッド環境下だからと言って <code>readdir_r()</code> を使う必要はない。 <code>readdir_r()</code> を使う必要があるのは、 <code>opendir()</code> で開いた同じディレクトリストリームに対して複数のスレッドからアクセスする場合だけである。これはレアケースだし、そもそも <code>readdir_r()</code> はあまり推奨されない（らしい）。 <code><a href="#ref1">[1]</a></code>
+<p>さて、 POSIX の範囲で async-signal-safe にディレクトリの内容を列挙する方法はないけれど、 Linux には <code>getdents()</code> という低レベルシステムコールがあるので、これを使って実装が可能。 <code>readdir()</code> も実際には glibc が <code>getdents()</code> を使って実装しているのだと思う（未確認）。
+<pre>
+void closefrom_fallback( int lowfd ) {
+    int maxfd = sysconf( _SC_OPEN_MAX );
+    for( int fd = lowfd; fd &lt; maxfd; ++fd ) {
+        close( fd );
+    }
+}
+
+void closefrom( int lowfd ) {
+    assert( lowfd &gt;= 0 );
+
+    struct linux_dirent {
+        unsigned long d_ino;
+        unsigned long d_off;
+        uint16_t      d_reclen;
+        char          d_name[1];
+    };
+
+    int dfd = open( "/proc/self/fd", O_RDONLY | O_DIRECTORY );
+    if( dfd &lt; 0 ) {
+        return closefrom_fallback( lowfd );
+    }
+
+    while( true ) {
+        uint8_t buf[PIPE_BUF];
+        int n = syscall( SYS_getdents, dfd, buf, PIPE_BUF );
+        if( n &lt;= 0 ) {
+            break;
+        }
+
+        int offset = 0;
+        while( offset &lt; n ) {
+            linux_dirent* entry = reinterpret_cast&lt;linux_dirent*&gt;( buf + offset );
+            uint8_t d_type = buf[offset + entry-&gt;d_reclen - 1];
+
+            if( d_type != DT_DIR ) {
+                int fd = 0;
+                char* it = entry-&gt;d_name;
+                while( '0' &lt;= *it &amp;&amp; *it &lt;= '9' ) {
+                    fd = fd * 10 + (*it - '0');
+                    ++it;
+                }
+                if( it == entry-&gt;d_name || *it != '\0' ) {
+                    // /proc may not be procfs.
+                    close( dfd );
+                    return closefrom_fallback( lowfd );
+                }
+
+                if( fd &gt;= lowfd &amp;&amp; fd != dfd ) {
+                    close( fd );
+                }
+            }
+
+            offset += entry-&gt;d_reclen;
+        }
+    }
+
+    close( dfd );
+}
+</pre>
+<p>念のため <code>atoi()</code> の使用も避けてみたり、 <code>/proc</code> が存在しない場合のフォールバックも用意したりしてみたけれど、まあ細かいことは気にするな。
+<p>この実装は、これはこれで（非公開システムコールを使っている点を除けば）問題ないのだけど、<strong>実は <code>readdir()</code> を使った元のコードを <code>fork() - exec()</code> 間で呼んでもデッドロックしない。</strong>理由は次の通りである。
+<p>なぜ <code>opendir()</code> が async-signal-unsafe かというと、 <code>opendir()</code> が内部で <code>malloc()</code> を呼ぶ必要があるからだ。 <code>malloc()</code> は内部でロックを保持するので、 <code>malloc()</code> の途中に他スレッドが <code>fork()</code> を呼びだすとロックが獲得されたままになる可能性がある。だから <code>exec()</code> する前に <code>malloc()</code> を呼ぶとデッドロックの可能性は避けられない…ように思える。でもこれは glibc においては正しくない。なぜなら <strong>glibc <code>malloc()</code> は <code>pthread_<wbr>atfork()</code> を用いて <code>fork()</code> 後にロックを開放する</strong>からだ。 <code><a href="#ref0">[0]</a></code>
+<p>これは別に <code>readdir()</code> を使った <code>closefrom()</code> の実装が async-signal-safe であるという意味ではない。が、すぐに <code>exec()</code> するような使い方に限定すれば特に問題はない。
+
+<h2>まとめ</h2>
+
+<p>ということで多くの場合、 Linux 依存の非公開システムコールを使ってまで async-sygnal-safe な <code>closefrom()</code> を実装する必要はない。実際に、 Sun の Java VM や CPython では <code>readdir()</code> を使った <code>closefrom()</code> の実装が使われている。
+
+<h2>参考</h2>
+<ul>
+	<li id="ref0"><code>[0]</code> <a href="http://bugs.python.org/issue8052">http://bugs.python.org/issue8052</a>
+	<li id="ref1"><code>[1]</code> <a href="http://udrepper.livejournal.com/18555.html">http://udrepper.livejournal.com/18555.html</a>
+	<li id="ref2"><code>[2]</code> <a href="http://www.atmarkit.co.jp/flinux/rensai/watch2008/watch08a.html">http://www.atmarkit.co.jp/flinux/rensai/watch2008/watch08a.html</a>
+</ul>
+
+<p><a href="../">cd ../</a></p>
+<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

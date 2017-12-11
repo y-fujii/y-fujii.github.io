@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <title>Rust 言語チュートリアル (非公式日本語訳, 途中)</title>
+  <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+  <link rel="stylesheet" href="rust.css">
+</head>
+<body>
+<header>
+<h1 class="title">Rust 言語チュートリアル (非公式日本語訳, 途中)</h1>
+</header>
+<p><em style="color: #ff4020">2016-07-21 この翻訳はもはや化石です。</em><a href="https://rust-lang-ja.github.io/the-rust-programming-language-ja/1.6/book/">こちらに現在の言語仕様に追従した素晴らしい翻訳があります。</a></p>
+<p>このページは削除すべきだとは思うのですが、現行の言語仕様、とくにメモリ管理まわりの仕様がどのような試行錯誤を経て現在の形になったかを知る上で面白い時期のスナップショットになっていて、残しておくのもありかなーとか。</p>
+<p>*</p>
+<p>訳注00： Rust は (既に処理系が Rust 自身で書かれているにも関わらず) 大胆な言語仕様の変更が頻繁に行われています。この日本語訳も git の最新版 (0.3.1 &lt; x &lt; 0.4. すんません rev メモっておくの忘れました) と同期して一ヶ月程度ですが、あっという間に別言語と化しています。訳者のやる気的な意味もあってとりあえず公開しておきますが、日本語訳は参考程度に留め、
+<a href="https://github.com/mozilla/rust/tree/master/doc">git 上の公式ドキュメント</a>
+を参照してください。 0.4 のリリース以降は git に追従せず、リリースごとに翻訳する予定です。</p>
+<nav id="TOC">
+<ul>
+<li><a href="#イントロダクション"><span class="toc-section-number">1</span> イントロダクション</a><ul>
+<li><a href="#範囲"><span class="toc-section-number">1.1</span> 範囲</a></li>
+<li><a href="#言語の概要"><span class="toc-section-number">1.2</span> 言語の概要</a></li>
+<li><a href="#ファーストインプレッション"><span class="toc-section-number">1.3</span> ファーストインプレッション</a></li>
+<li><a href="#慣例"><span class="toc-section-number">1.4</span> 慣例</a></li>
+</ul></li>
+<li><a href="#げてぃんすたーてっ"><span class="toc-section-number">2</span> げてぃん・すたーてっ</a><ul>
+<li><a href="#インストール"><span class="toc-section-number">2.1</span> インストール</a></li>
+<li><a href="#最初のプログラムをコンパイルする"><span class="toc-section-number">2.2</span> 最初のプログラムをコンパイルする</a></li>
+<li><a href="#rust-プログラムの構造"><span class="toc-section-number">2.3</span> Rust プログラムの構造</a></li>
+<li><a href="#rust-コードの編集"><span class="toc-section-number">2.4</span> Rust コードの編集</a></li>
+</ul></li>
+<li><a href="#構文の基本"><span class="toc-section-number">3</span> 構文の基本</a><ul>
+<li><a href="#ブレース"><span class="toc-section-number">3.1</span> ブレース</a></li>
+<li><a href="#式の構文"><span class="toc-section-number">3.2</span> 式の構文</a></li>
+<li><a href="#識別子"><span class="toc-section-number">3.3</span> 識別子</a></li>
+<li><a href="#変数宣言"><span class="toc-section-number">3.4</span> 変数宣言</a></li>
+<li><a href="#型"><span class="toc-section-number">3.5</span> 型</a></li>
+<li><a href="#型の使用"><span class="toc-section-number">3.6</span> 型の使用</a></li>
+<li><a href="#数値リテラル"><span class="toc-section-number">3.7</span> 数値リテラル</a></li>
+<li><a href="#他のリテラル"><span class="toc-section-number">3.8</span> 他のリテラル</a></li>
+<li><a href="#演算子"><span class="toc-section-number">3.9</span> 演算子</a></li>
+<li><a href="#構文拡張"><span class="toc-section-number">3.10</span> 構文拡張</a></li>
+</ul></li>
+<li><a href="#control-structures"><span class="toc-section-number">4</span> Control structures</a><ul>
+<li><a href="#conditionals"><span class="toc-section-number">4.1</span> Conditionals</a></li>
+<li><a href="#pattern-matching"><span class="toc-section-number">4.2</span> Pattern matching</a></li>
+<li><a href="#let"><span class="toc-section-number">4.3</span> Let</a></li>
+<li><a href="#loops"><span class="toc-section-number">4.4</span> Loops</a></li>
+</ul></li>
+<li><a href="#functions"><span class="toc-section-number">5</span> Functions</a></li>
+<li><a href="#基本データ型"><span class="toc-section-number">6</span> 基本データ型</a><ul>
+<li><a href="#struct"><span class="toc-section-number">6.1</span> struct</a></li>
+<li><a href="#struct-のパターン"><span class="toc-section-number">6.2</span> struct のパターン</a></li>
+<li><a href="#enum"><span class="toc-section-number">6.3</span> enum</a></li>
+<li><a href="#enum-のパターン"><span class="toc-section-number">6.4</span> enum のパターン</a></li>
+<li><a href="#タプル"><span class="toc-section-number">6.5</span> タプル</a></li>
+</ul></li>
+<li><a href="#rust-のメモリモデル"><span class="toc-section-number">7</span> Rust のメモリモデル</a><ul>
+<li><a href="#パフォーマンスの考慮がメモリモデルに与える影響"><span class="toc-section-number">7.1</span> パフォーマンスの考慮がメモリモデルに与える影響</a></li>
+<li><a href="#並列性の考慮がメモリモデルに与える影響"><span class="toc-section-number">7.2</span> 並列性の考慮がメモリモデルに与える影響</a></li>
+<li><a href="#周知事項"><span class="toc-section-number">7.3</span> 周知事項</a></li>
+</ul></li>
+<li><a href="#ボックスとポインタ"><span class="toc-section-number">8</span> ボックスとポインタ</a><ul>
+<li><a href="#共有ボックス"><span class="toc-section-number">8.1</span> 共有ボックス</a></li>
+<li><a href="#ユニークボックス"><span class="toc-section-number">8.2</span> ユニークボックス</a></li>
+<li><a href="#借用ポインタ"><span class="toc-section-number">8.3</span> 借用ポインタ</a></li>
+<li><a href="#mutability"><span class="toc-section-number">8.4</span> Mutability</a></li>
+</ul></li>
+<li><a href="#ベクトル"><span class="toc-section-number">9</span> ベクトル</a><ul>
+<li><a href="#ベクトルと文字列のメソッド"><span class="toc-section-number">9.1</span> ベクトルと文字列のメソッド</a></li>
+</ul></li>
+<li><a href="#クロージャ"><span class="toc-section-number">10</span> クロージャ</a><ul>
+<li><a href="#共有クロージャ"><span class="toc-section-number">10.1</span> 共有クロージャ</a></li>
+<li><a href="#ユニーククロージャ"><span class="toc-section-number">10.2</span> ユニーククロージャ</a></li>
+<li><a href="#クロージャの互換性"><span class="toc-section-number">10.3</span> クロージャの互換性</a></li>
+<li><a href="#do-構文"><span class="toc-section-number">10.4</span> do 構文</a></li>
+<li><a href="#for-ループ"><span class="toc-section-number">10.5</span> for ループ</a></li>
+</ul></li>
+<li><a href="#generics"><span class="toc-section-number">11</span> Generics</a><ul>
+<li><a href="#総称関数"><span class="toc-section-number">11.1</span> 総称関数</a></li>
+<li><a href="#総称データ型"><span class="toc-section-number">11.2</span> 総称データ型</a></li>
+<li><a href="#kind"><span class="toc-section-number">11.3</span> kind</a></li>
+</ul></li>
+<li><a href="#trait"><span class="toc-section-number">12</span> trait</a><ul>
+<li><a href="#宣言"><span class="toc-section-number">12.1</span> 宣言</a></li>
+<li><a href="#実装"><span class="toc-section-number">12.2</span> 実装</a></li>
+<li><a href="#制約付き型パラメタ"><span class="toc-section-number">12.3</span> 制約付き型パラメタ</a></li>
+<li><a href="#多相的な-trait"><span class="toc-section-number">12.4</span> 多相的な trait</a></li>
+<li><a href="#trait-内での-self-型"><span class="toc-section-number">12.5</span> trait 内での <code>self</code> 型</a></li>
+<li><a href="#trait-型へのキャスト"><span class="toc-section-number">12.6</span> trait 型へのキャスト</a></li>
+<li><a href="#trait-のない実装"><span class="toc-section-number">12.7</span> trait のない実装</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="イントロダクション"><a href="#TOC"><span class="header-section-number">1</span> イントロダクション</a></h1>
+<h2 id="範囲"><a href="#TOC"><span class="header-section-number">1.1</span> 範囲</a></h2>
+<p>これは Rust プログラミング言語のチュートリアルです。読者はプログラミングの基本的な概念に慣れていて、一つ以上、他言語でプログラミング経験があると仮定しています。しばし C 系統の他言語と比較を行います。このチュートリアルは言語全体をカバーしますが、<a href="rust.html">言語仕様書</a>ほどの深さと正確さはありません。</p>
+<h2 id="言語の概要"><a href="#TOC"><span class="header-section-number">1.2</span> 言語の概要</a></h2>
+<p>Rust は、型安全性、メモリ安全性、並列性、パフォーマンスに焦点を置いたシステムプログラミング言語です。 C++ のような言語でよく起こるある種のエラーを避けつつ、大規模で高パフォーマンスのアプリケーションを書くことに向いています。 Rust は洗練されたメモリモデルを持っており、 C++ で使われるようなたくさんの効率的なデータ構造を利用可能にすると同時に、セグメンテーション違反を起こす無効なメモリアクセスを禁止します。他のシステム言語のように、静的に型付けされ、事前コンパイル (ahead of time compilation) されます。</p>
+<p>マルチパラダイム言語として、Rust は手続き的、関数的、オブジェクト指向的なスタイルでコードを記述することをサポートします。 Rust の素敵で高レベルな特徴として、次のようなものがあります。</p>
+<ul>
+<li><strong><em>パターンマッチングおよび代数的データ型 (enum) 。</em></strong> 関数型言語でよく使われているもので、 ADT のパターンマッチングはプログラムのロジックを記述するための、簡潔で表現しやすい方法を提供します。</li>
+<li><strong><em>タスクベース並列性。</em></strong> Rust はメモリを共有しない軽量なタスクを用います。</li>
+<li><strong><em>高階関数。</em></strong> Rust の関数は引数としてクロージャをとったり、返り値としてクロージャを返すことが可能です。 Rust のクロージャはとてもパワフルで、いたる所で使われます。</li>
+<li><strong><em>trait 多相性。</em></strong> Rust の型システムは <em>trait</em> と呼ばれる、 Java スタイルのインターフェイスと、 Haskell スタイルの型クラスのユニークな組み合わせを特徴としています。</li>
+<li><strong><em>パラメータ多相性 (generics) 。</em></strong> 関数と型は、オプショナルな型制約を伴う型変数でパラメータ化できます。</li>
+<li><strong><em>型推論。</em></strong> ローカル変数の宣言での型注釈 (type annotation) は省略可能です。</li>
+</ul>
+<h2 id="ファーストインプレッション"><a href="#TOC"><span class="header-section-number">1.3</span> ファーストインプレッション</a></h2>
+<p>C, C++, JavaScript の伝統を受け継いだ波括弧を多用する言語として、 Rust は読者が慣れ親しんでいる他の言語と見た目がよく似ています。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">boring_old_factorial</span>(<span class="cm-def">n</span>: <span class="cm-keyword">int</span>) -&gt; <span class="cm-keyword">int</span> {
+    <span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">result</span> = <span class="cm-number">1</span>, <span class="cm-def">i</span> = <span class="cm-number">1</span>;
+    <span class="cm-keyword">while</span> <span class="cm-variable">i</span> &lt;= <span class="cm-variable">n</span> {
+        <span class="cm-variable">result</span> *= <span class="cm-variable">i</span>;
+        <span class="cm-variable">i</span> += <span class="cm-number">1</span>;
+    }
+    <span class="cm-variable">return</span> <span class="cm-variable">result</span>;
+}
+</pre>
+
+<p>いくつか C と異なる部分が現れています。型は変数名の前ではなく後に置かれ、前にコロンが付きます。 <code>let</code> で導入されるローカル変数では型を省略可能で、省略した場合は推論されます。 <code>while</code> や <code>if</code> のような構文では条件式を囲む括弧は必要ありません (囲うことも許されます) 。</p>
+<p>しかし、 Rust が単純な C の発展形であると結論しないでください。このチュートリアルで明らかになるように、 Rust はたくさんの高レベルなイディオムのために、効率的で、強い型付けを持ち、メモリ安全性をサポートするという、全く違う方向性を持ちます。</p>
+<h2 id="慣例"><a href="#TOC"><span class="header-section-number">1.4</span> 慣例</a></h2>
+<p>このチュートリアル全体を通して、言語のキーワードを示す単語やコード例の中で定義される識別子を <code>code font</code> で記述します。</p>
+<p>コード片はインデントされ、固定幅フォントで記述されます。コード片がプログラム全体を構成するとは限りません。簡潔さのため、それ自身はコンパイルできないプログラムの断片を見せることがあります。試してみるためには、そのコードを <code>fn main() { ...  }</code> で囲う必要があるかもしれません。また、実際に定義されていないものへの参照を含まないことを確認してください。</p>
+<blockquote>
+<p><strong><em>警告:</em></strong> Rust は非常に開発途上の言語です。言語の変更や実装の欠如の可能性、 その他ブロッククォート上で示される警告に注意してください。</p>
+</blockquote>
+<h1 id="げてぃんすたーてっ"><a href="#TOC"><span class="header-section-number">2</span> げてぃん・すたーてっ</a></h1>
+<h2 id="インストール"><a href="#TOC"><span class="header-section-number">2.1</span> インストール</a></h2>
+<p>Rust コンパイラは現在のところ <a href="http://dl.rust-lang.org/dist/rust-0.3.tar.gz">tarball</a> からビルドする必要があります。将来的にはたくさんの OS に対しバイナリパッケージを配布しようと思っています。</p>
+<p>Rust コンパイラはそれ自身が Rust で書かれているため、 (開発のより前の段階で作られた) コンパイル済みの「スナップショット」バージョンでビルドする必要があるという点が、少しだけ通常と異なります。ソースビルドには次のものが必要です。</p>
+<ul>
+<li>スナップショットをダウンロードするするため、インターネットに接続されていること。</li>
+<li>我々が提供しているスナップショットバイナリのどれかを実行できること。
+<ul>
+<li>Windows (7, server 2008 r2), x86 のみ</li>
+<li>Linux (various distributions), x86 と x86-64</li>
+<li>OSX 10.6 (&quot;Snow Leopard&quot;) または 10.7 (&quot;Lion&quot;), x86 と x86-64</li>
+</ul></li>
+</ul>
+<p>この他のプラットフォームでも動作するかもしれませんが、最も動作する可能性の高い、 &quot;tier 1&quot; としてサポートされるビルド環境が存在します。将来、クロスコンパイルによってさらに多くのプラットフォームが加えられるでしょう。</p>
+<p>ソースからビルドするには、次のパッケージが必要です。</p>
+<ul>
+<li>g++ 4.4 or clang++ 3.x</li>
+<li>python 2.6 or later</li>
+<li>perl 5.0 or later</li>
+<li>gnu make 3.81 or later</li>
+<li>curl</li>
+</ul>
+<p>あなたが比較的新しい *nix を使っていて上の条件を満たしていれば、だいたいうまくいくはずです。 Windows 上でソースからビルドするには追加の手順が必要です。 Rust wiki の <a href="https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust">getting started</a> を参照してください。</p>
+<pre class="notrust"><code>$ wget http://dl.rust-lang.org/dist/rust-0.3.tar.gz
+$ tar -xzf rust-0.3.tar.gz
+$ cd rust-0.3
+$ ./configure
+$ make &amp;&amp; make install</code></pre>
+<p>インストール先のディレクトリを修正する権限がない場合、 <code>sudo make install</code> を使う必要があるかもしれません。インストール先は <code>configure</code> に引数 <code>--prefix</code> を渡すことで変更できます。他のいろいろなオプションもサポートされています。詳細を知りたいときは <code>--help</code> を渡してください。</p>
+<p>ビルドが完了すれば、 <code>make install</code> で次のプログラムが <code>/usr/local/bin</code> にインストールされます。</p>
+<ul>
+<li><code>rustc</code>, Rust コンパイラ</li>
+<li><code>rustdoc</code>, API ドキュメンテーションツール</li>
+<li><code>cargo</code>, Rust パッケージマネージャ</li>
+</ul>
+<h2 id="最初のプログラムをコンパイルする"><a href="#TOC"><span class="header-section-number">2.2</span> 最初のプログラムをコンパイルする</a></h2>
+<p>Rust のプログラムファイルは、慣例として拡張子 <code>.rs</code> が与えられます。次の内容のファイル <code>hello.rs</code> があるとします。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">main</span>() {
+    <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-string">&quot;hello world!&quot;</span>);
+}
+</pre>
+
+<p>Rust コンパイラが正しくインストールされていれば、 <code>rustc hello.rs</code> を実行すると <code>hello</code> (もしくは <code>hello.exe</code>) というバイナリが生成されるはずです。</p>
+<p>もしこのプログラムを不正になるように修正し (例えば、 <code>io::println</code> を何か存在しない関数に換える) 、コンパイルしたら、次のようなエラーメッセージが表示されるでしょう。</p>
+<pre class="notrust"><code>hello.rs:2:4: 2:16 error: unresolved name: io::print_it
+hello.rs:2     io::print_it(&quot;hello world!&quot;);
+               ^~~~~~~~~~~~</code></pre>
+<p>Rust コンパイラはエラーに出くわしたとき、役立つ情報を提供しようとします。</p>
+<h2 id="rust-プログラムの構造"><a href="#TOC"><span class="header-section-number">2.3</span> Rust プログラムの構造</a></h2>
+<p>一番単純な形式の Rust プログラムは、いくつかの型と関数が定義されている <code>.rs</code> ファイルです。もし <code>main</code> 関数が存在すれば、実行形式にコンパイルできます。 Rust は、宣言でないコードがファイルのトップレベルに現れることを許しません。つまり、全てのステートメントは関数内になければいけません。</p>
+<p>Rust プログラムはライブラリとしてもコンパイルでき、他のプログラムにインクルードされ得ます。多く例の一番上に現れる <code>extern mod std</code> ディレクティブは、<a href="http://doc.rust-lang.org/doc/std">標準ライブラリ</a> をインポートします。これについては<a href="#modules-and-crate">後ほど</a>より詳細に記述します。</p>
+<h2 id="rust-コードの編集"><a href="#TOC"><span class="header-section-number">2.4</span> Rust コードの編集</a></h2>
+<p>Rust のソース配布物の <code>src/etc/vim/</code> に Vim のハイライトとインデントを行うスクリプトが、また <code>src/etc/emacs/</code> に emacs mode があります。 Sublime Text 2 のためのパッケージが <a href="http://github.com/dbp/sublime-rust">github.com/dbp/sublime-rust</a> にあり、 <a href="http://wbond.net/sublime_packages/package_control">package control</a> からも利用可能です。</p>
+<p>他のエディタ向けのものはまだ提供されていません。もしあなたが好きなエディタ向けの Rust モードを書いたら、私たちがリンクできるよう知らせてください。</p>
+<h1 id="構文の基本"><a href="#TOC"><span class="header-section-number">3</span> 構文の基本</a></h1>
+<h2 id="ブレース"><a href="#TOC"><span class="header-section-number">3.1</span> ブレース</a></h2>
+<p>あなたが C 系統の言語 (C++, Java, JavaScript, C#, PHP) でプログラムしたことがあれば、 Rust は親しみやすく感じられるでしょう。主な表面的な違いは、 <code>if</code> ステートメントと <code>while</code> ループの本体をブラケットで囲む<em>必要がある</em>ということです。単一のステートメントであっても、ブラケットで囲われていない本体は許されません。</p>
+<p>これらの違いを理解すれば、 Rust のステートメントと式の表面的な構文は C ライクです。関数呼び出しは <code>myfunc(arg1, arg2)</code> と記述され、演算子は C とおおむね同じ名前と優先順位を持ち、コメントは同じであり、 <code>if</code> や <code>while</code> のような構文が利用できます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">main</span>() {
+    <span class="cm-keyword">while</span> <span class="cm-atom">true</span> {
+        <span class="cm-comment">/* Ensure that basic math works. */</span>
+        <span class="cm-keyword">if</span> <span class="cm-number">2</span>*<span class="cm-number">20</span> &gt; <span class="cm-number">30</span> {
+            <span class="cm-comment">// Everything is OK.</span>
+            <span class="cm-variable">it_works</span>();
+        } <span class="cm-keyword">else</span> {
+            <span class="cm-variable">abort</span>();
+        }
+        <span class="cm-keyword">break</span>;
+    }
+}
+</pre>
+
+<h2 id="式の構文"><a href="#TOC"><span class="header-section-number">3.2</span> 式の構文</a></h2>
+<p>全てのコード上で明白なわけではありませんが、 Rust の構文と C 系統の先行する言語との間には基本的な違いがあります。 C ではステートメントであるたくさんの構成物が、 Rust では式です。これは Rust をより表現豊かにします。例えば、あなたは次のようなコードを書いたことがあるかもしれません。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">price</span>;
+<span class="cm-keyword">if</span> <span class="cm-variable">item</span> == <span class="cm-string">&quot;salad&quot;</span> {
+    <span class="cm-variable">price</span> = <span class="cm-number">3.50</span>;
+} <span class="cm-keyword">else</span> <span class="cm-keyword">if</span> <span class="cm-variable">item</span> == <span class="cm-string">&quot;muffin&quot;</span> {
+    <span class="cm-variable">price</span> = <span class="cm-number">2.25</span>;
+} <span class="cm-keyword">else</span> {
+    <span class="cm-variable">price</span> = <span class="cm-number">2.00</span>;
+}
+</pre>
+
+<p>しかし Rust では名前 <code>price</code> をくり返す必要はありません。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">price</span> = <span class="cm-keyword">if</span> <span class="cm-variable">item</span> == <span class="cm-string">&quot;salad&quot;</span> { <span class="cm-number">3.50</span> }
+            <span class="cm-keyword">else</span> <span class="cm-keyword">if</span> <span class="cm-variable">item</span> == <span class="cm-string">&quot;muffin&quot;</span> { <span class="cm-number">2.25</span> }
+            <span class="cm-keyword">else</span> { <span class="cm-number">2.00</span> };
+</pre>
+
+<p>二つのコードは厳密に等価です。つまり、条件に依って <code>price</code> に値を代入します。二つ目のコードからセミコロンが省略されていることに注意してください。これは重要です。波括弧で囲まれたブロック内で、最後のステートメントの後ろにセミコロンがない場合、ブロック全体に最後の式の値が与えられます。</p>
+<p>別の言い方をすると、 Rust でのセミコロンは<em>式の値を無視します</em>。よって、 <code>if</code> のブランチが <code>{ 4; }</code> のようになっていたら、上述の例は <code>price</code> に nil (void) が単に代入されます。しかしセミコロンがないと、それぞれのブランチが違う値を持ち、 <code>price</code> は実行されるブランチの値になります。</p>
+<p>この特徴は関数本体でも有効です。次の関数はブール値を返します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">is_four</span>(<span class="cm-def">x</span>: <span class="cm-keyword">int</span>) -&gt; <span class="cm-keyword">bool</span> { <span class="cm-variable">x</span> == <span class="cm-number">4</span> }
+</pre>
+
+<p>手短に言えば、宣言 (変数に対する <code>let</code>, 関数に対する <code>fn</code>, その他) でない全てのものは式です。</p>
+<p>もしこれら全てが式だとしたら、<em>全ての</em>ステートメント、つまり C では伝統的にセミコロンで終端しない <code>while</code> などの後にさえ、終端のセミコロンを追加する必要があると結論するかもしれません。しかしこれは正しくありません。ブロックで終わる式は、そのブロックが終端に式を含んでいるときだけ (if that block contains a trailing expression) セミコロンが必要です。 <code>while</code> ループは終端に式を許しません。また <code>if</code> ステートメントは、その値を使いたいときのみ終端に式を持つ傾向にあります。その場合、 <code>if</code> 式は上の例での <code>let x = ...</code> のような、より大きなステートメントに埋め込まれているでしょう。</p>
+<h2 id="識別子"><a href="#TOC"><span class="header-section-number">3.3</span> 識別子</a></h2>
+<p>Rust の識別子は C と同じ規則に従います。つまり、アルファベットかアンダースコアから始まり、その後はアルファベット、数字、またはアンダースコアの列を含むことが可能です。関数、変数、モジュール名は小文字で始め、可読性を助ける箇所でアンダースコアを用い、一方で型は大文字で始めるのが、推奨されるスタイルです。</p>
+<p>ダブルコロン (<code>::</code>) はモジュールセパレータとして使われます。なので、 <code>io::println</code> は「 <code>io</code> という名前のモジュール内にある、 <code>println</code> という名前のもの」を意味します。</p>
+<h2 id="変数宣言"><a href="#TOC"><span class="header-section-number">3.4</span> 変数宣言</a></h2>
+<p>今まで見てきたように、 <code>let</code> キーワードはローカル変数を導入します。ローカル変数はデフォルトで immutable です。 <code>let mut</code> を用いることで、再代入できる変数を導入できます。グローバル定数は <code>const</code> で定義できます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">const</span> <span class="cm-def">REPEAT</span>: <span class="cm-keyword">int</span> = <span class="cm-number">5</span>;
+<span class="cm-keyword">fn</span> <span class="cm-def">main</span>() {
+    <span class="cm-keyword">let</span> <span class="cm-def">hi</span> = <span class="cm-string">&quot;Hi!&quot;</span>;
+    <span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">count</span> = <span class="cm-number">0</span>;
+    <span class="cm-keyword">while</span> <span class="cm-variable">count</span> &lt; <span class="cm-variable">REPEAT</span> {
+        <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable">hi</span>);
+        <span class="cm-variable">count</span> += <span class="cm-number">1</span>;
+    }
+}
+</pre>
+
+<p>ローカル変数は前の宣言を隠し、前の変数をアクセス不可能にする可能性があります。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">my_favorite_value</span>: <span class="cm-keyword">float</span> = <span class="cm-number">57.8</span>;
+<span class="cm-keyword">let</span> <span class="cm-def">my_favorite_value</span>: <span class="cm-keyword">int</span> = <span class="cm-variable">my_favorite_value</span> <span class="cm-keyword">as</span> <span class="cm-variable">int</span>;
+</pre>
+
+<h2 id="型"><a href="#TOC"><span class="header-section-number">3.5</span> 型</a></h2>
+<p>基本型は次のように記述します。</p>
+<dl>
+<dt><code>()</code></dt>
+<dd><p>Nil, 一つの値だけを持つ型。</p>
+</dd>
+<dt><code>bool</code></dt>
+<dd><p>値 <code>true</code> と <code>false</code> からなるブール型。</p>
+</dd>
+<dt><code>int</code></dt>
+<dd><p>マシンポインタの大きさを持つ整数。</p>
+</dd>
+<dt><code>uint</code></dt>
+<dd><p>マシンポインタの大きさを持つ符号無し整数。</p>
+</dd>
+<dt><code>i8</code>, <code>i16</code>, <code>i32</code>, <code>i64</code></dt>
+<dd><p>指定された大きさ (bit) を持つ符号付き整数。</p>
+</dd>
+<dt><code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code></dt>
+<dd><p>指定された大きさを持つ符号無し整数。</p>
+</dd>
+<dt><code>float</code></dt>
+<dd><p>ターゲットマシンで効率的にサポートされる最大の浮動小数点数型。</p>
+</dd>
+<dt><code>f32</code>, <code>f64</code></dt>
+<dd><p>指定された大きさを持つ浮動小数点数型。</p>
+</dd>
+<dt><code>char</code></dt>
+<dd><p>ユニコード文字 (32 bits) 。</p>
+</dd>
+</dl>
+<p>これらは複合型 (詳細は後述) と組み合わせられます。ここで <code>T</code> は任意の型を表します。</p>
+<dl>
+<dt><code>[T * N]</code></dt>
+<dd><p>N 個の要素を持つベクタ (他の言語での配列) 。</p>
+</dd>
+<dt><code>[mut T * N]</code></dt>
+<dd><p>N 個の要素を持つ変更可能なベクタ。</p>
+</dd>
+<dt><code>(T1, T2)</code></dt>
+<dd><p>タプル型。 1 より大きい項数がサポートされます。</p>
+</dd>
+<dt><code>@T</code>, <code>~T</code>, <code>&amp;T</code></dt>
+<dd><p>ポインタ型。 <code>@</code>, <code>~</code>, <code>&amp;</code> が何を意味するかの説明は <a href="#boxes-and-pointers">Boxes and pointers</a> を見てください。</p>
+</dd>
+</dl>
+<p>直接には扱えず、ポインタによってのみ扱える型が存在します。例えば、文字列 (<code>str</code>) を直接使うことはできず、代わりに文字列へのポインタ (<code>@str</code>, <code>~str</code>, or <code>&amp;str</code>) を使います。これらの<em>動的な大きさ</em>を持つ型は、次から構成されます。</p>
+<dl>
+<dt><code>fn(arg1: T1, arg2: T2) -&gt; T3</code></dt>
+<dd><p>関数型。</p>
+</dd>
+<dt><code>str</code></dt>
+<dd><p>文字列型 (UTF-8) 。</p>
+</dd>
+<dt><code>[T]</code></dt>
+<dd><p>不明な大きさを持つベクタ (スライスとも呼ばれます) 。</p>
+</dd>
+<dt><code>[mut T]</code></dt>
+<dd><p>不明な大きさを持つ変更可能なベクタ。</p>
+</dd>
+</dl>
+<p>型は <code>type</code> 宣言により名前を与えることが可能です。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">type</span> <span class="cm-def">MonsterSize</span> = <span class="cm-keyword">uint</span>;
+</pre>
+
+<p>これは符号無し整数型に <code>MonsterSize</code> というシノニムを提供します。 <code>MonsterSize</code> という新しい、非互換の型を実際に作るのではありません。 <code>MonsterSize</code> と <code>uint</code> は互いに交換可能な形で使え、一方の名前が期待される場所でもう一方の名前を使っても型エラーを引き起こしません。単なるシノニムでない型を作る必要があるなら、 <a href="#single_variant_enum">single-variant enums</a> を読んでください。</p>
+<h2 id="型の使用"><a href="#TOC"><span class="header-section-number">3.6</span> 型の使用</a></h2>
+<p><code>is_four</code> の例にある <code>-&gt; bool</code> は、関数の戻り型を記述する方法です。意味のある値を返さない関数については、 <code>-&gt; ()</code> とオプショナルに記述できます。しかし、以前見た <code>fn main() { ...}</code> の例のように、通常は戻り型の注釈を単に省略します。</p>
+<p>関数の引数は全て <code>x: int</code> のように型を宣言する必要があります。関数内ではほとんどのローカルなものに対し、型推論が可能です (後述する総称関数はときどき注釈が必要です) 。ローカルなものは型注釈ありでもなしでも記述できます。</p>
+<pre class="cm-s-default">
+<span class="cm-comment">// The type of this vector will be inferred based on its use.</span>
+<span class="cm-keyword">let</span> <span class="cm-def">x</span> = [];
+<span class="cm-comment">// Explicitly say this is a vector of zero integers.</span>
+<span class="cm-keyword">let</span> <span class="cm-def">y</span>: [<span class="cm-keyword">int</span> * <span class="cm-number">0</span>] = [];
+</pre>
+
+<h2 id="数値リテラル"><a href="#TOC"><span class="header-section-number">3.7</span> 数値リテラル</a></h2>
+<p>整数は 10 進数 (<code>144</code>) 、16 進数 (<code>0x90</code>) 、 2 進数 (<code>0b10010000</code>) と記述できます。サフィックスなしで (<code>3</code>, <code>-500</code>, etc.) 整数リテラルを書いたら、 Rust コンパイラはその型を周辺の型注釈と関数のシグニチャから推論しようとします。型注釈が全くない場合、 Rust はサフィックスのない整数リテラルを <code>int</code> 型と仮定します。整数リテラルをサフィックス付きで記述して、型の曖昧さを避けることも可能です。例えば、次のようにです。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">x</span> = <span class="cm-number">50</span>;
+<span class="cm-keyword">log</span>(<span class="cm-variable">error</span>, <span class="cm-variable">x</span>); <span class="cm-comment">// x is an int</span>
+<span class="cm-keyword">let</span> <span class="cm-def">y</span> = <span class="cm-number">100</span><span class="cm-variable">u</span>;
+<span class="cm-keyword">log</span>(<span class="cm-variable">error</span>, <span class="cm-variable">y</span>); <span class="cm-comment">// y is an uint</span>
+</pre>
+
+<p>Rust では整数型同士の暗黙の変換が行われないことに注意してください。 <code>uint</code> 型の変数に 1 を足すとき、 <code>+= 1u8</code> と書くと型エラーになります。</p>
+<p>浮動小数点数は <code>0.0</code>, <code>1e6</code>, <code>2.1e-7</code> と記述します。サフィックスがない場合、リテラルは <code>float</code> 型であると仮定されます。サフィックス <code>f</code> (32-bit) と <code>l</code> (64-bit) は特定の型を持つリテラルを作るのに使えます。</p>
+<h2 id="他のリテラル"><a href="#TOC"><span class="header-section-number">3.8</span> 他のリテラル</a></h2>
+<p>nil リテラルは型と同じように <code>()</code> と記述します。キーワード <code>true</code> と <code>false</code> はブールリテラルを生成します。</p>
+<p>文字リテラルは <code>'x'</code> のように、シングルクォート間に記述します。 C と同様に Rust はバックスラッシュを使って、いくつかのキャラクタエスケープを認識します。 <code>\n</code>, <code>\r</code>, <code>\t</code> がよく使われます。</p>
+<p>文字列リテラルもまた同じエスケープシーケンスを許容します。それらはダブルクォート間に記述されます (<code>&quot;hello&quot;</code>) 。 Rust の文字列は改行を含むことがあります。</p>
+<h2 id="演算子"><a href="#TOC"><span class="header-section-number">3.9</span> 演算子</a></h2>
+<p>Rust の演算子に驚くようなところはほとんどありません。二項演算子は <code>*</code>, <code>/</code>, <code>%</code>, <code>+</code>, <code>-</code> (乗算、除算、剰余、加算、減算) で行われます。 <code>-</code> は符号を反転する単項演算子でもあります。 C と同様に、ビット演算子 <code>&gt;&gt;</code>, <code>&lt;&lt;</code>, <code>&amp;</code>, <code>|</code>, <code>^</code> もサポートされます。整数型に対して <code>!</code> を適用すると、全てのビットが反転する (C での <code>~</code> のように) ことに注意してください。</p>
+<p>比較演算子は伝統的な <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code> です。ショートサーキット (遅延評価される) ブール演算子は <code>&amp;&amp;</code> (かつ) と <code>||</code> (または) と書かれます。</p>
+<p>Rust では、型変換に <code>as</code> 演算子を使います。左側に式、右側に型を取り、意味のある変換が存在する場合、式の結果を与えられた型に変換します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">x</span>: <span class="cm-keyword">float</span> = <span class="cm-number">4.0</span>;
+<span class="cm-keyword">let</span> <span class="cm-def">y</span>: <span class="cm-keyword">uint</span> = <span class="cm-variable">x</span> <span class="cm-keyword">as</span> <span class="cm-variable">uint</span>;
+<span class="cm-keyword">assert</span> <span class="cm-variable">y</span> == <span class="cm-number">4</span><span class="cm-variable">u</span>;
+</pre>
+
+<p>C との主な違いは <code>++</code> と <code>--</code> がないことと、論理ビット演算子がより高い優先順位を持つことです。 <code>x &amp; 2 &gt; 0</code> は C では <code>x &amp; (2 &gt; 0)</code> という結果になり、 Rust では <code>(x &amp; 2) &gt; 0</code> を意味します。これはあなたが (C の熟練者でなければ) 期待したものに、より近いはずです。</p>
+<h2 id="構文拡張"><a href="#TOC"><span class="header-section-number">3.10</span> 構文拡張</a></h2>
+<p><em>構文拡張</em>は言語に組み込まれておらず、代わりにライブラリによって提供される特殊形式です。構文拡張が使われていることを読み手に明確にするため、全ての構文拡張の名前は <code>!</code> で終わります。標準ライブラリは少数の構文拡張を定義していて、最も有用なのはコンパイル時に展開される <code>sprintf</code> スタイルのテキスト整形器 <code>fmt!</code> です。</p>
+<pre class="cm-s-default">
+<span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable">fmt</span>!(<span class="cm-string">&quot;%s is %d&quot;</span>, <span class="cm-variable">~</span><span class="cm-string">&quot;the answer&quot;</span>, <span class="cm-number">42</span>));
+</pre>
+
+<p><code>fmt!</code> は <a href="http://en.cppreference.com/w/cpp/io/c/fprintf">printf</a> がサポートするディレクティブのほとんどをサポートしますが、ディレクティブの型が引数の型に一致しない場合、コンパイルエラーになります。</p>
+<p>このチュートリアルの範囲を超えますが、マクロシステムを使ってあなた自身の構文拡張を定義できます。</p>
+<h1 id="control-structures"><a href="#TOC"><span class="header-section-number">4</span> Control structures</a></h1>
+<h2 id="conditionals"><a href="#TOC"><span class="header-section-number">4.1</span> Conditionals</a></h2>
+<p>We've seen <code>if</code> pass by a few times already. To recap, braces are compulsory, an optional <code>else</code> clause can be appended, and multiple <code>if</code>/<code>else</code> constructs can be chained together:</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">if</span> <span class="cm-atom">false</span> {
+    <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable">~</span><span class="cm-string">&quot;that's odd&quot;</span>);
+} <span class="cm-keyword">else</span> <span class="cm-keyword">if</span> <span class="cm-atom">true</span> {
+    <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable">~</span><span class="cm-string">&quot;right&quot;</span>);
+} <span class="cm-keyword">else</span> {
+    <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable">~</span><span class="cm-string">&quot;neither true nor false&quot;</span>);
+}
+</pre>
+
+<p>The condition given to an <code>if</code> construct <em>must</em> be of type boolean (no implicit conversion happens). If the arms return a value, this value must be of the same type for every arm in which control reaches the end of the block:</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">signum</span>(<span class="cm-def">x</span>: <span class="cm-keyword">int</span>) -&gt; <span class="cm-keyword">int</span> {
+    <span class="cm-keyword">if</span> <span class="cm-variable">x</span> &lt; <span class="cm-number">0</span> { -<span class="cm-number">1</span> }
+    <span class="cm-keyword">else</span> <span class="cm-keyword">if</span> <span class="cm-variable">x</span> &gt; <span class="cm-number">0</span> { <span class="cm-number">1</span> }
+    <span class="cm-keyword">else</span> { <span class="cm-variable">return</span> <span class="cm-number">0</span> }
+}
+</pre>
+
+<h2 id="pattern-matching"><a href="#TOC"><span class="header-section-number">4.2</span> Pattern matching</a></h2>
+<p>Rust's <code>match</code> construct is a generalized, cleaned-up version of C's <code>switch</code> construct. You provide it with a value and a number of <em>arms</em>, each labelled with a pattern, and the code will attempt to match each pattern in order. For the first one that matches, the arm is executed.</p>
+<pre class="cm-s-default">
+<span class="cm-variable">match</span> <span class="cm-variable">my_number</span> {
+  <span class="cm-number">0</span>     =&gt; <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-string">&quot;zero&quot;</span>),
+  <span class="cm-number">1</span> | <span class="cm-number">2</span> =&gt; <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-string">&quot;one or two&quot;</span>),
+  <span class="cm-number">3..10</span> =&gt; <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-string">&quot;three to ten&quot;</span>),
+  <span class="cm-variable">_</span>     =&gt; <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-string">&quot;something else&quot;</span>)
+}
+</pre>
+
+<p>There is no 'falling through' between arms, as in C—only one arm is executed, and it doesn't have to explicitly <code>break</code> out of the construct when it is finished.</p>
+<p>The part to the left of the arrow <code>=&gt;</code> is called the <em>pattern</em>. Literals are valid patterns and will match only their own value. The pipe operator (<code>|</code>) can be used to assign multiple patterns to a single arm. Ranges of numeric literal patterns can be expressed with two dots, as in <code>M..N</code>. The underscore (<code>_</code>) is a wildcard pattern that matches everything.</p>
+<p>The patterns in an match arm are followed by a fat arrow, <code>=&gt;</code>, then an expression to evaluate. Each case is separated by commas. It's often convenient to use a block expression for a case, in which case the commas are optional.</p>
+<pre class="cm-s-default">
+<span class="cm-variable">match</span> <span class="cm-variable">my_number</span> {
+  <span class="cm-number">0</span> =&gt; {
+    <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-string">&quot;zero&quot;</span>)
+  }
+  <span class="cm-variable">_</span> =&gt; {
+    <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-string">&quot;something else&quot;</span>)
+  }
+}
+</pre>
+
+<p><code>match</code> constructs must be <em>exhaustive</em>: they must have an arm covering every possible case. For example, if the arm with the wildcard pattern was left off in the above example, the typechecker would reject it.</p>
+<p>A powerful application of pattern matching is <em>destructuring</em>, where you use the matching to get at the contents of data types. Remember that <code>(float, float)</code> is a tuple of two floats:</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">use</span> <span class="cm-variable-2">float::consts::</span><span class="cm-variable">pi</span>;
+<span class="cm-keyword">fn</span> <span class="cm-def">angle</span>(<span class="cm-def">vector</span>: (<span class="cm-keyword">float</span>, <span class="cm-keyword">float</span>)) -&gt; <span class="cm-keyword">float</span> {
+    <span class="cm-variable">match</span> <span class="cm-variable">vector</span> {
+      (<span class="cm-number">0</span><span class="cm-variable">f</span>, <span class="cm-variable">y</span>) <span class="cm-keyword">if</span> <span class="cm-variable">y</span> &lt; <span class="cm-number">0</span><span class="cm-variable">f</span> =&gt; <span class="cm-number">1.5</span> * <span class="cm-variable">pi</span>,
+      (<span class="cm-number">0</span><span class="cm-variable">f</span>, <span class="cm-variable">y</span>) =&gt; <span class="cm-number">0.5</span> * <span class="cm-variable">pi</span>,
+      (<span class="cm-variable">x</span>, <span class="cm-variable">y</span>) =&gt; <span class="cm-variable-2">float::</span><span class="cm-variable">atan</span>(<span class="cm-variable">y</span> <span class="cm-variable">/</span> <span class="cm-variable">x</span>)
+    }
+}
+</pre>
+
+<p>A variable name in a pattern matches everything, <em>and</em> binds that name to the value of the matched thing inside of the arm block. Thus, <code>(0f, y)</code> matches any tuple whose first element is zero, and binds <code>y</code> to the second element. <code>(x, y)</code> matches any tuple, and binds both elements to a variable.</p>
+<p>Any <code>match</code> arm can have a guard clause (written <code>if EXPR</code>), which is an expression of type <code>bool</code> that determines, after the pattern is found to match, whether the arm is taken or not. The variables bound by the pattern are available in this guard expression.</p>
+<h2 id="let"><a href="#TOC"><span class="header-section-number">4.3</span> Let</a></h2>
+<p>You've already seen simple <code>let</code> bindings. <code>let</code> is also a little fancier: it is possible to use destructuring patterns in it. For example, you can say this to extract the fields from a tuple:</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> (<span class="cm-def">a</span>, <span class="cm-def">b</span>) = <span class="cm-variable">get_tuple_of_two_ints</span>();
+</pre>
+
+<p>This will introduce two new variables, <code>a</code> and <code>b</code>, bound to the content of the tuple.</p>
+<p>You may only use <em>irrefutable</em> patterns—patterns that can never fail to match—in let bindings. Other types of patterns, such as literals, are not allowed.</p>
+<h2 id="loops"><a href="#TOC"><span class="header-section-number">4.4</span> Loops</a></h2>
+<p><code>while</code> produces a loop that runs as long as its given condition (which must have type <code>bool</code>) evaluates to true. Inside a loop, the keyword <code>break</code> can be used to abort the loop, and <code>again</code> can be used to abort the current iteration and continue with the next.</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">cake_amount</span> = <span class="cm-number">8</span>;
+<span class="cm-keyword">while</span> <span class="cm-variable">cake_amount</span> &gt; <span class="cm-number">0</span> {
+    <span class="cm-variable">cake_amount</span> -= <span class="cm-number">1</span>;
+}
+</pre>
+
+<p><code>loop</code> is the preferred way of writing <code>while true</code>:</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">x</span> = <span class="cm-number">5</span>;
+<span class="cm-keyword">loop</span> {
+    <span class="cm-variable">x</span> += <span class="cm-variable">x</span> - <span class="cm-number">3</span>;
+    <span class="cm-keyword">if</span> <span class="cm-variable">x</span> % <span class="cm-number">5</span> == <span class="cm-number">0</span> { <span class="cm-keyword">break</span>; }
+    <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable-2">int::</span><span class="cm-variable">str</span>(<span class="cm-variable">x</span>));
+}
+</pre>
+
+<p>This code prints out a weird sequence of numbers and stops as soon as it finds one that can be divided by five.</p>
+<p>For more involved iteration, such as going over the elements of a collection, Rust uses higher-order functions. We'll come back to those in a moment.</p>
+<h1 id="functions"><a href="#TOC"><span class="header-section-number">5</span> Functions</a></h1>
+<p>Like all other static declarations, such as <code>type</code>, functions can be declared both at the top level and inside other functions (or modules, which we'll come back to <a href="#modules-and-crates">later</a>).</p>
+<p>We've already seen several function definitions. They are introduced with the <code>fn</code> keyword, the type of arguments are specified following colons and the return type follows the arrow.</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">repeat</span>(<span class="cm-def">string</span>: &amp;<span class="cm-keyword">str</span>, <span class="cm-def">count</span>: <span class="cm-keyword">int</span>) -&gt; <span class="cm-variable-3">~str</span> {
+    <span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">result</span> = <span class="cm-variable">~</span><span class="cm-string">&quot;&quot;</span>;
+    <span class="cm-keyword">for</span> <span class="cm-def">count</span>.<span class="cm-variable">times</span> {
+        <span class="cm-variable">result</span> += <span class="cm-variable">string</span>;
+    }
+    <span class="cm-variable">return</span> <span class="cm-variable">result</span>;
+}
+</pre>
+
+<p>The <code>return</code> keyword immediately returns from the body of a function. It is optionally followed by an expression to return. A function can also return a value by having its top level block produce an expression.</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">int_to_str</span>(<span class="cm-def">i</span>: <span class="cm-keyword">int</span>) -&gt; <span class="cm-variable-3">~str</span> {
+    <span class="cm-keyword">if</span> <span class="cm-variable">i</span> == <span class="cm-variable">copernicus</span> {
+        <span class="cm-variable">return</span> <span class="cm-variable">~</span><span class="cm-string">&quot;tube sock&quot;</span>;
+    } <span class="cm-keyword">else</span> {
+        <span class="cm-variable">return</span> <span class="cm-variable">~</span><span class="cm-string">&quot;violin&quot;</span>;
+    }
+}
+</pre>
+
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">int_to_str</span>(<span class="cm-def">i</span>: <span class="cm-keyword">int</span>) -&gt; <span class="cm-variable-3">~str</span> {
+    <span class="cm-keyword">if</span> <span class="cm-variable">i</span> == <span class="cm-variable">copernicus</span> { <span class="cm-variable">~</span><span class="cm-string">&quot;tube sock&quot;</span> }
+    <span class="cm-keyword">else</span> { <span class="cm-variable">~</span><span class="cm-string">&quot;violin&quot;</span> }
+}
+</pre>
+
+<p>Functions that do not return a value are said to return nil, <code>()</code>, and both the return type and the return value may be omitted from the definition. The following two functions are equivalent.</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">do_nothing_the_hard_way</span>() -&gt; () { <span class="cm-variable">return</span> (); }
+
+<span class="cm-keyword">fn</span> <span class="cm-def">do_nothing_the_easy_way</span>() { }
+</pre>
+
+<h1 id="基本データ型"><a href="#TOC"><span class="header-section-number">6</span> 基本データ型</a></h1>
+<p>Rust のコアデータ型は、 struct 、 enum (タグ付けされた共用体、代数的データ型) 、タプルです。これらはデフォルトで変更不可能 (immutable) です。</p>
+<pre class="cm-s-default">
+<span class="cm-variable">struct</span> <span class="cm-variable">Point</span> { <span class="cm-variable">x</span>: <span class="cm-variable">float</span>, <span class="cm-variable">y</span>: <span class="cm-variable">float</span> }
+
+<span class="cm-keyword">enum</span> <span class="cm-def">Shape</span> {
+    <span class="cm-def">Circle</span>(<span class="cm-variable-3">Point</span>, <span class="cm-keyword">float</span>),
+    <span class="cm-def">Rectangle</span>(<span class="cm-variable-3">Point</span>, <span class="cm-variable-3">Point</span>)
+}
+</pre>
+
+<h2 id="struct"><a href="#TOC"><span class="header-section-number">6.1</span> struct</a></h2>
+<p>Rust の struct 型は、使用する前に <code>struct</code> 構文を用いて宣言する必要があります。 <code>struct</code> 構文は <code>struct Name { field1: T1, field2: T2 [, ...] }</code> です。ここで <code>T1</code>, <code>T2</code>, ... は型を意味します。 struct を構築するためには同じ構文を使用しますが、 <code>struct</code> を記述しません。例えば <code>Point { x: 1.0, y: 2.0 }</code> です。</p>
+<p>struct は C の構造体に非常に似ていて、メモリ上に同じ方法で置かれます (従って、 Rust から C の構造体を読むことが可能で、その逆も同様です) 。 struct のフィールドにアクセスするには、ドット演算子を用います (<code>mypoint.x</code>) 。</p>
+<p>mutable にしたいフィールドは明示的に <code>mut</code> と記す必要があります。</p>
+<pre class="cm-s-default">
+<span class="cm-variable">struct</span> <span class="cm-variable">Stack</span> {
+    <span class="cm-variable">content</span>: <span class="cm-variable">~</span>[<span class="cm-variable">int</span>],
+    <span class="cm-keyword">mut</span> <span class="cm-variable">head</span>: <span class="cm-variable">uint</span>
+}
+</pre>
+
+<p>このような型では、 <code>mystack.head += 1u</code> とできます。仮に <code>mut</code> を型から省略した場合、このような代入は型エラーになります。</p>
+<h2 id="struct-のパターン"><a href="#TOC"><span class="header-section-number">6.2</span> struct のパターン</a></h2>
+<p>struct は <code>match</code> パターンによって分解できます。基本的な構文は <code>Name {fieldname: pattern, ...}</code> です。</p>
+<pre class="cm-s-default">
+<span class="cm-variable">match</span> <span class="cm-variable">mypoint</span> {
+    <span class="cm-variable">Point</span> { <span class="cm-variable">x</span>: <span class="cm-number">0.0</span>, <span class="cm-variable">y</span>: <span class="cm-variable">y</span> } =&gt; { <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable">y</span>.<span class="cm-variable">to_str</span>());                    }
+    <span class="cm-variable">Point</span> { <span class="cm-variable">x</span>: <span class="cm-variable">x</span>, <span class="cm-variable">y</span>: <span class="cm-variable">y</span> }   =&gt; { <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable">x</span>.<span class="cm-variable">to_str</span>() + <span class="cm-string">&quot; &quot;</span> + <span class="cm-variable">y</span>.<span class="cm-variable">to_str</span>()); }
+}
+</pre>
+
+<p>一般に struct のフィールド名は、型で現れるのと同じ順序でパターンに現れる必要はありません。レコードの全フィールドには興味がない場合、他のフィールドを無視することを示すために、レコードパターンを <code>, _</code> で終えます (<code>{field1, _}</code> のように) 。</p>
+<h2 id="enum"><a href="#TOC"><span class="header-section-number">6.3</span> enum</a></h2>
+<p>enum はいくつかの異なった表現を持つデータ型です。さきほど示した例を考えましょう。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">enum</span> <span class="cm-def">shape</span> {
+    <span class="cm-def">circle</span>(<span class="cm-variable-3">point</span>, <span class="cm-keyword">float</span>),
+    <span class="cm-def">rectangle</span>(<span class="cm-variable-3">point</span>, <span class="cm-variable-3">point</span>)
+}
+</pre>
+
+<p>この型の値は circle か rectangle のどちらか一方であり、 circle の場合は point レコードと float 、 rectangle の場合は二つの point レコードを持ちます。このような値の実行時表現には、実際に保持している形式を識別するための ID が含まれています。これは C での「タグ付き共用体」に非常に似ていますが、人間工学的により良いものです (with better ergonomics) 。</p>
+<p>上の宣言は、これらに対応する型 (XXX: 原文の refer to はポインタ的な意味ではないはず。要確認) <code>shape</code> を定義し、さらに値を構築するために使う関数 <code>circle</code> と <code>rectangle</code> を定義します (指定された型の引数を取ります) 。よって、 <code>circle({x: 0f, y: 0f}, 10f)</code> とすると、新しい circle が作られます。</p>
+<p>enum ヴァリアントは必ずしも型パラメタを持つ必要はありません。次の例は C の enum と等価です。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">enum</span> <span class="cm-def">direction</span> {
+    <span class="cm-def">north</span>,
+    <span class="cm-def">east</span>,
+    <span class="cm-def">south</span>,
+    <span class="cm-def">west</span>
+}
+</pre>
+
+<p>これは <code>north</code>, <code>east</code>, <code>south</code>, <code>west</code> を定数として定義し、その型は全て <code>direction</code> になります。</p>
+<p>enum が C ライクなとき、つまりパラメタを取るヴァリアントが存在しない場合、識別子 (discriminator) の値を明示的に設定できます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">enum</span> <span class="cm-def">color</span> {
+  <span class="cm-def">red</span> = <span class="cm-def">0xff0000</span>,
+  <span class="cm-def">green</span> = <span class="cm-def">0x00ff00</span>,
+  <span class="cm-def">blue</span> = <span class="cm-def">0x0000ff</span>
+}
+</pre>
+
+<p>明示的な識別子がヴァリアントに指定されない場合、値は一つ前のヴァリアントの値 + 1 になります。最初のヴァリアントが識別子を持たない場合、値は 0 になります。例えば、 <code>north</code> の値は 0 、 <code>east</code> の値は 1 です。</p>
+<p>enum が C ライクなら、 <code>as</code> キャスト演算子を使うことで識別子の値が得られます。</p>
+<a name="single_variant_enum"></a>
+<p>単一のヴァリアントを持つ enum の特殊なケースがあります。これは、既に存在する型のシノニムではなく、新しく区別される型を定義するために使われます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">enum</span> <span class="cm-def">gizmo_id</span> = <span class="cm-keyword">int</span>;
+</pre>
+
+<p>上の記述は次の省略表記です。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">enum</span> <span class="cm-def">gizmo_id</span> { <span class="cm-def">gizmo_id</span>(<span class="cm-keyword">int</span>) }
+</pre>
+
+<p>このような enum 型では、値参照 (dereference) を行う単項演算子 <code>*</code> によって内容を取り出すことができます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">my_gizmo_id</span> = <span class="cm-variable">gizmo_id</span>(<span class="cm-number">10</span>);
+<span class="cm-keyword">let</span> <span class="cm-def">id_int</span>: <span class="cm-keyword">int</span> = *<span class="cm-variable">my_gizmo_id</span>;
+</pre>
+
+<h2 id="enum-のパターン"><a href="#TOC"><span class="header-section-number">6.4</span> enum のパターン</a></h2>
+<p>複数のヴァリアントを持つ enum 型では、 destructuring が内容を取り出す唯一の方法です。全てのヴァリアント構築子は、次の <code>area</code> の定義のように、パターンとして使えます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">area</span>(<span class="cm-def">sh</span>: <span class="cm-variable-3">shape</span>) -&gt; <span class="cm-keyword">float</span> {
+    <span class="cm-keyword">alt</span> <span class="cm-variable">sh</span> {
+        <span class="cm-def">circle</span>(<span class="cm-def">_</span>, <span class="cm-def">size</span>) { <span class="cm-variable-2">float::consts::</span><span class="cm-variable">pi</span> * <span class="cm-variable">size</span> * <span class="cm-variable">size</span> }
+        <span class="cm-def">rectangle</span>({<span class="cm-def">x</span>, <span class="cm-def">y</span>}, {<span class="cm-def">x</span>: <span class="cm-variable">x2</span>, <span class="cm-def">y</span>: <span class="cm-variable">y2</span>}) { (<span class="cm-variable">x2</span> - <span class="cm-variable">x</span>) * (<span class="cm-variable">y2</span> - <span class="cm-variable">y</span>) }
+    }
+}
+</pre>
+
+<p>次は、パラメタのない enum をマッチングする別の例です。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">point_from_direction</span>(<span class="cm-def">dir</span>: <span class="cm-variable-3">direction</span>) -&gt; <span class="cm-variable-3">point</span> {
+    <span class="cm-keyword">alt</span> <span class="cm-variable">dir</span> {
+        <span class="cm-def">north</span> { {<span class="cm-variable">x</span>:  <span class="cm-number">0</span><span class="cm-variable">f</span>, <span class="cm-variable">y</span>:  <span class="cm-number">1</span><span class="cm-variable">f</span>} }
+        <span class="cm-def">east</span>  { {<span class="cm-variable">x</span>:  <span class="cm-number">1</span><span class="cm-variable">f</span>, <span class="cm-variable">y</span>:  <span class="cm-number">0</span><span class="cm-variable">f</span>} }
+        <span class="cm-def">south</span> { {<span class="cm-variable">x</span>:  <span class="cm-number">0</span><span class="cm-variable">f</span>, <span class="cm-variable">y</span>: -<span class="cm-number">1</span><span class="cm-variable">f</span>} }
+        <span class="cm-def">west</span>  { {<span class="cm-variable">x</span>: -<span class="cm-number">1</span><span class="cm-variable">f</span>, <span class="cm-variable">y</span>:  <span class="cm-number">0</span><span class="cm-variable">f</span>} }
+    }
+}
+</pre>
+
+<h2 id="タプル"><a href="#TOC"><span class="header-section-number">6.5</span> タプル</a></h2>
+<p>Rust のタプルはフィールドが名前を持たない (よってドット記法ではフィールドにアクセスできません) 点を除いて、レコードと全く同じように振舞います。タプルは 0 と 1 を除く任意の数の引数を持てます (ただし、お好みで nil, <code>()</code> を空のタプルと考えることもできます) 。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">mytup</span>: (<span class="cm-keyword">int</span>, <span class="cm-keyword">int</span>, <span class="cm-keyword">float</span>) = (<span class="cm-number">10</span>, <span class="cm-number">20</span>, <span class="cm-number">30.0</span>);
+<span class="cm-keyword">alt</span> <span class="cm-variable">mytup</span> {
+  (<span class="cm-def">a</span>, <span class="cm-def">b</span>, <span class="cm-def">c</span>) { <span class="cm-keyword">log</span>(<span class="cm-variable">info</span>, <span class="cm-variable">a</span> + <span class="cm-variable">b</span> + (<span class="cm-variable">c</span> <span class="cm-keyword">as</span> <span class="cm-variable">int</span>)); }
+}
+</pre>
+
+<h1 id="rust-のメモリモデル"><a href="#TOC"><span class="header-section-number">7</span> Rust のメモリモデル</a></h1>
+<p>ここで、 Rust のメモリモデルに関わる概念について説明するため、ちょっと遠回りしましょう。 Rust はメモリ管理に対して非常に特徴的なアプローチを採っていて、言語の印象を形作る上で重要な役割を果たしています。 memory landscape を理解することは Rust 独自の特徴に出くわしたとき、その理解を容易にしてくれるでしょう。</p>
+<p>Rust におけるメモリの見方を特徴付ける、三つの競合する目標があります。</p>
+<ul>
+<li>メモリ安全性: Rust 言語によって管理され、アクセスできるメモリは必ず有効であることが保証されます。つまり、一般的な状況下で Rust がセグメンテーションエラーやメモリリークを引き起こすことは不可能です。</li>
+<li>性能: 高パフォーマンスで低レベルなコードでは、複数のアロケーション戦略を採用できる必要があります。また、低パフォーマンスで高レベルなコードには、単一のガーベッジコレクションを基本としたヒープアロケーション戦略を採用できる必要があります。</li>
+<li>並列性: Rust は並列に動くコードに対しても、メモリ安全性を保証します。</li>
+</ul>
+<h2 id="パフォーマンスの考慮がメモリモデルに与える影響"><a href="#TOC"><span class="header-section-number">7.1</span> パフォーマンスの考慮がメモリモデルに与える影響</a></h2>
+<p>強いメモリ安全性の保証を提供するほとんどの言語は、オブジェクト全てを管理するために、ガーベッジコレクションされるヒープに頼っています。これは概念的にも実装的にも素直です。しかし著しいコストがかかります。このアプローチの採る言語は、アロケーションのコストを改善する方法を積極的に追求する傾向にあります (Java 仮想マシンを考えてみてください) 。 Rust はこの戦略を _ 共有ボックス (shared box)_ でサポートします。これはヒープ上に割り当てられるメモリで、複数の変数から参照されることがあります。</p>
+<p>対して C++ のような言語は、オブジェクトを割り当てる場所について、非常に正確な制御が可能です。特に高価なヒープアロケーションを避けて、オブジェクトをスタック上に直接置くことがよく行われます。 Rust でも同じことが可能で、スタックオブジェクトが破壊された後で変数から参照されないことを保証するため、コンパイラは賢い_ポインタの生存期間の解析_を使います。</p>
+<h2 id="並列性の考慮がメモリモデルに与える影響"><a href="#TOC"><span class="header-section-number">7.2</span> 並列性の考慮がメモリモデルに与える影響</a></h2>
+<p>並列環境でのメモリ安全性は、同じメモリにアクセスする 2 つのスレッド間の競合条件を回避することに関係します。高レベル言語でさえ、多くの場合プログラムに競合条件のないことを保証するために、プログラマが正しくロックを行うことを要求します。</p>
+<p>Rust は、メモリがタスク間で共有できないという立場からスタートします。他言語での経験から、各タスクのヒープを他から隔離する手法は信頼できる戦略で、プログラマにとって理解しやすいと証明されています。ヒープの隔離は、ガーベッジコレクションが各ヒープごとに独立して行われる、という利益もあります。 Rust はガーベッジコレクションのために、 &quot;stop the world&quot; を行うことはありません。</p>
+<p>タスク間でヒープを完全に隔離することは、タスク間で転送されるあらゆるデータをコピーする必要があることを意味します。となるように思えます。これはタスク間通信を実装する上で十分に使える方法ですが、大きなデータ構造に対して非常に非効率です。</p>
+<p>このため、 Rust はグローバルな_交換ヒープ (exchange heap)_ を採用します。交換ヒープに割り当てられたオブジェクトは <em>ownerwhip semantics</em> を持ちます。これはオブジェクトを参照している変数が一つだけ存在する、というセマンティクスです。従って、それらは_ユニークボックス_として参照されます。全てのタスクはこのヒープ上にオブジェクトを割り当て、高価なコピーを避けて他のタスクへ所有権を転送できます。</p>
+<h2 id="周知事項"><a href="#TOC"><span class="header-section-number">7.3</span> 周知事項</a></h2>
+<p>Rust には、オブジェクトを割り当てられる 3 つの領域、スタック、ローカルヒープ、交換ヒープ (exchange heap) があります。それぞれの領域に対応するポインタ型、借用ポインタ (borrowed pointer, <code>&amp;T</code>) 、共有ボックス (shared box, <code>@T</code>) 、ユニークボックス (unique box, <code>~T</code>) があります。これら 3 つの sigil は言語を探検する上でくり返し現れるでしょう。それぞれのポインタの適切な役割を学ぶことは、 Rust を効率的に使う上での鍵となります。</p>
+<h1 id="ボックスとポインタ"><a href="#TOC"><span class="header-section-number">8</span> ボックスとポインタ</a></h1>
+<p>多くの現代的な言語とは対照的に、 Rust ではレコード型や enum のような複合型は、ヒープ上に確保したメモリへのポインタとして表現され_ません_。それらは C や C++ と同様に、直接に表現されます。これは <code>let x = {x: 1f, y: 1f};</code> と記述したら、スタック上にレコードが作られることを意味します。それをデータ構造へコピーしたら、ポインタではなくレコード全体がコピーされます。</p>
+<p><code>point</code> のような小さなレコードは、通常メモリを (ヒープ上に) 確保してポインタ経由で使うより効率的です。しかし大きなレコードや変更可能なフィールドを持つレコードは、ヒープ上に単一ののコピーを持ち、ポインタを通して参照する方が有用なことがあります。</p>
+<p>Rust は数種のポインタ型をサポートします。安全なポインタとして、ローカルヒープ上に割り当てられる共有ボックス <code>@T</code>, 交換ヒープ上に割り当てられるユニークボックス <code>~T</code>, 任意のメモリを指すことが可能で、寿命がコールスタックにより管理される借用ポインタ <code>&amp;T</code> があります。</p>
+<p>Rust にはまた、 <code>*T</code> と記述される安全でないポインタがあります。これは安全でないコードでのみ用いられる、全くチェックされないポインタ型です (従って典型的な Rust のコードでは滅多に使われません) 。</p>
+<p>全てのポインタ型は、 <code>*</code> 単項演算子で参照する値を得られます。</p>
+<h2 id="共有ボックス"><a href="#TOC"><span class="header-section-number">8.1</span> 共有ボックス</a></h2>
+<p>共有ボックスはヒープに割り当てられ、ガーベッジコレクションされるメモリへのポインタです。共有ボックスは式に <code>@</code> 単項演算子を適用することで作られます。式の値はボックス化され、その結果が返されます。代入時に起こるような共有ボックスのコピーでは、ポインタのみがコピーされボックスの中身はコピーされません。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">x</span>: @<span class="cm-keyword">int</span> = @<span class="cm-number">10</span>; <span class="cm-comment">// New box, refcount of 1</span>
+<span class="cm-keyword">let</span> <span class="cm-def">y</span> = <span class="cm-variable">x</span>; <span class="cm-comment">// Copy the pointer, increase refcount</span>
+<span class="cm-comment">// When x and y go out of scope, refcount goes to 0, box is freed</span>
+</pre>
+
+<p>共有ボックスがタスク間を横断することは絶対にありません。</p>
+<blockquote>
+<p><strong><em>注意:</em></strong> 共有ボックスは現在のところ、参照カウントと cycle collection を通 して再利用されますが、 Tracing GC に移行する予定です。</p>
+</blockquote>
+<h2 id="ユニークボックス"><a href="#TOC"><span class="header-section-number">8.2</span> ユニークボックス</a></h2>
+<p>共有ボックスとは対照的に、ユニークボックスは単一の所有者を持ち、二つのユニークボックスが同じメモリを参照することはありません。全タスクの全てのユニークボックスは、単一の_交換ヒープ_上に割り当てられます。そこでは所有者がユニークであるという性質から、タスク間の受け渡しが可能です。</p>
+<p>ユニークボックスは所有者が単一なので、コピーは新しいユニークボックスの割り当てと、内容をコピーする操作を含みます。ユニークボックスのコピーは高価なので、暗黙にコピー操作が入る場合コンパイルエラーになります。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">x</span> = <span class="cm-variable">~10</span>;
+<span class="cm-keyword">let</span> <span class="cm-def">y</span> = <span class="cm-variable">x</span>; <span class="cm-comment">// error: copying a non-implicitly copyable type</span>
+</pre>
+
+<p>本当にユニークボックスをコピーしたいときは明示的に記述する必要があります。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">x</span> = <span class="cm-variable">~10</span>;
+<span class="cm-keyword">let</span> <span class="cm-def">y</span> = <span class="cm-keyword">copy</span> <span class="cm-variable">x</span>;
+</pre>
+
+<p>ここで 'ムーブ' (<code>&lt;-</code>) 演算子が登場します。これは <code>=</code> に似ていますが、コピー元を de-initialize します。それゆえユニークボックスは単一の所有者を持つという制約条件を壊すことなく <code>x</code> から <code>y</code> へ移動できます (もしムーブ演算子の代わりに代入演算子を使ったら、原理的にはボックスはコピーされます) 。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">x</span> = <span class="cm-variable">~10</span>;
+<span class="cm-keyword">let</span> <span class="cm-def">y</span> &lt;- <span class="cm-def">x</span>;
+</pre>
+
+<blockquote>
+<p><strong><em>注意:</em></strong> このコピー vs ムーブの議論は、自動的にコピー操作をムーブに置き換 える &quot;last use&quot; ルールの説明ではありません。これは継続的に変更が行われる予定 の、発展中の領域です。</p>
+</blockquote>
+<p>ユニークボックスは共有ボックスを含まないとき、他のタスクへ送信できます。送信するタスクはボックスの所有権を放棄し、以後アクセスできなくなります。受信するタスクはボックスの唯一の所有者になります。</p>
+<h2 id="借用ポインタ"><a href="#TOC"><span class="header-section-number">8.3</span> 借用ポインタ</a></h2>
+<p>Rust の借用ポインタは汎用の参照/ポインタ型で C++ の参照型に似ていますが、有効なメモリを指していることが保証されます。ポインタ所持者が参照先メモリの所有者となるユニークポインタとは対照的に、借用ポインタは絶対に所有権を持ちません。ポインタは任意の型から借用可能で、参照先より長生きしないことが保証されます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">foo</span> = <span class="cm-variable">~</span><span class="cm-string">&quot;foo&quot;</span>;
+<span class="cm-variable">work_with_foo_by_pointer</span>(&amp;<span class="cm-variable">foo</span>);
+</pre>
+
+<p>次の例は借用ポインタでできないことを示しています。仮にこのような記述が可能なら、 <code>foo</code> へのポインタが <code>foo</code> 自身より長生きしてしまいます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">foo_ptr</span>;
+{
+    <span class="cm-keyword">let</span> <span class="cm-def">foo</span> = <span class="cm-variable">~</span><span class="cm-string">&quot;foo&quot;</span>;
+    <span class="cm-variable">foo_ptr</span> = &amp;<span class="cm-variable">foo</span>;
+}
+</pre>
+
+<blockquote>
+<p><strong><em>注意:</em></strong> 借用ポインタは新しく言語に追加されたものです。これはまだ広範囲に は使われていませんが、よくある状況下、特に引数の参照渡しのために使われるよう になると期待されています。 Rust の現状の引数の参照渡しの解決法は <a href="#argument-passing">引数渡しの モード</a> を参照してください。</p>
+</blockquote>
+<h2 id="mutability"><a href="#TOC"><span class="header-section-number">8.4</span> Mutability</a></h2>
+<p>全てのポインタ型は mutable な亜種を持ち、 <code>@mut T</code> または <code>~mut T</code> のように記述します。 値参照 (dereference) 演算子と変更操作を組み合わせることで、内容を書き換えることができます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">increase_contents</span>(<span class="cm-def">pt</span>: @<span class="cm-variable-3">mut</span> <span class="cm-keyword">int</span>) {
+    *<span class="cm-variable">pt</span> += <span class="cm-number">1</span>;
+}
+</pre>
+
+<h1 id="ベクトル"><a href="#TOC"><span class="header-section-number">9</span> ベクトル</a></h1>
+<h2 id="ベクトルと文字列のメソッド"><a href="#TOC"><span class="header-section-number">9.1</span> ベクトルと文字列のメソッド</a></h2>
+<h1 id="クロージャ"><a href="#TOC"><span class="header-section-number">10</span> クロージャ</a></h1>
+<p>今まで見てきたような名前付き関数は関数の外で宣言されたローカル変数を参照できません。それが環境について閉じていないからです。例えば、次のようには記述できません。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">foo</span> = <span class="cm-number">10</span>;
+
+<span class="cm-keyword">fn</span> <span class="cm-def">bar</span>() -&gt; <span class="cm-keyword">int</span> {
+   <span class="cm-variable">return</span> <span class="cm-variable">foo</span>; <span class="cm-comment">// `bar` cannot refer to `foo`</span>
+}
+</pre>
+
+<p>Rust は_クロージャ_もサポートしています。クロージャとは、自身を囲っているスコープ内の変数にアクセスできる関数です。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">call_closure_with_ten</span>(<span class="cm-def">b</span>: <span class="cm-keyword">fn</span>(<span class="cm-keyword">int</span>)) { <span class="cm-variable">b</span>(<span class="cm-number">10</span>); }
+
+<span class="cm-keyword">let</span> <span class="cm-def">captured_var</span> = <span class="cm-number">20</span>;
+<span class="cm-keyword">let</span> <span class="cm-def">closure</span> = |<span class="cm-variable">arg</span>| <span class="cm-variable">println</span>(<span class="cm-variable">fmt</span>!(<span class="cm-string">&quot;captured_var=%d, arg=%d&quot;</span>, <span class="cm-variable">captured_var</span>, <span class="cm-variable">arg</span>));
+
+<span class="cm-variable">call_closure_with_ten</span>(<span class="cm-variable">closure</span>);
+</pre>
+
+<p>クロージャはバーに挟まれた引数リストで始まり、単一の式が続きます。引数の型は戻り型と同様、一般に省略されます。コンパイラがほとんどいつも推論可能だからです。コンパイラが補助を必要とする稀なケースでは、引数の型と戻り型の注釈が付けられます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">bloop</span> = |<span class="cm-variable">well</span>, <span class="cm-def">oh</span>: <span class="cm-variable-3">mygoodness</span>| -&gt; <span class="cm-def">what_the</span> { <span class="cm-keyword">fail</span> <span class="cm-variable">oh</span>(<span class="cm-variable">well</span>) };
+</pre>
+
+<p>数種のクロージャの形式が存在し、それぞれ固有の役割があります。一番よく使われる_スタッククロージャ_は <code>fn&amp;</code> 型を持ち、囲われているスコープ内の変数に直接アクセスできます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">max</span> = <span class="cm-number">0</span>;
+(<span class="cm-variable">~</span>[<span class="cm-number">1</span>, <span class="cm-number">2</span>, <span class="cm-number">3</span>]).<span class="cm-variable">map</span>(|<span class="cm-variable">x</span>| <span class="cm-keyword">if</span> <span class="cm-variable">x</span> &gt; <span class="cm-variable">max</span> { <span class="cm-variable">max</span> = <span class="cm-variable">x</span> });
+</pre>
+
+<h2 id="共有クロージャ"><a href="#TOC"><span class="header-section-number">10.1</span> 共有クロージャ</a></h2>
+<p>(訳注: 以下原文で boxed closure と書かれている部分のいくつかを共有クロージャ (shared closure) に変更して翻訳)</p>
+<p>データ構造にクロージャを格納する必要があるとき、スタッククロージャを格納しようとしてもコンパイラに拒絶されます。このため、 Rust は <code>fn@</code> と記述される、任意の寿命を持つクロージャ型 (前述の <code>@</code> ポインタに類似の共有クロージャ) を提供します。</p>
+<p>共有クロージャは環境に直接アクセスせず、単に値 (XXX: that it closes) をプライベートなデータ構造へとコピーします。これは変数への代入が不可能で、変数の更新に「気づく」こともないことを意味します。</p>
+<p>次のコードは、引数に与えられた文字列を追加するクロージャを生成して関数から返し、それを呼び出します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">extern</span> <span class="cm-keyword">mod</span> <span class="cm-def">std</span>;
+
+<span class="cm-keyword">fn</span> <span class="cm-def">mk_appender</span>(<span class="cm-def">suffix</span>: <span class="cm-variable-3">~str</span>) -&gt; <span class="cm-keyword">fn@</span>(<span class="cm-def">~str</span>) -&gt; <span class="cm-variable-3">~str</span> {
+    <span class="cm-variable">return</span> <span class="cm-keyword">fn@</span>(<span class="cm-def">s</span>: <span class="cm-variable-3">~str</span>) -&gt; <span class="cm-variable-3">~str</span> { <span class="cm-variable">s</span> + <span class="cm-variable">suffix</span> };
+}
+
+<span class="cm-keyword">fn</span> <span class="cm-def">main</span>() {
+    <span class="cm-keyword">let</span> <span class="cm-def">shout</span> = <span class="cm-variable">mk_appender</span>(<span class="cm-variable">~</span><span class="cm-string">&quot;!&quot;</span>);
+    <span class="cm-variable-2">io::</span><span class="cm-variable">println</span>(<span class="cm-variable">shout</span>(<span class="cm-variable">~</span><span class="cm-string">&quot;hey ho, let's go&quot;</span>));
+}
+</pre>
+
+<p>この例は長いクロージャ構文 <code>fn@(s: ~str) ...</code> を使用し、共有クロージャを宣言していることを明示しています。実際には通常、共有クロージャは以前紹介した短いクロージャ構文を用いて定義されます。この場合、コンパイラがクロージャの型を推論します。よって、上述の例は次のようにも記述できます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">mk_appender</span>(<span class="cm-def">suffix</span>: <span class="cm-variable-3">~str</span>) -&gt; <span class="cm-keyword">fn@</span>(<span class="cm-def">~str</span>) -&gt; <span class="cm-variable-3">~str</span> {
+    <span class="cm-variable">return</span> |<span class="cm-variable">s</span>| <span class="cm-variable">s</span> + <span class="cm-variable">suffix</span>;
+}
+</pre>
+
+<h2 id="ユニーククロージャ"><a href="#TOC"><span class="header-section-number">10.2</span> ユニーククロージャ</a></h2>
+<p><code>fn~</code> と記述され <code>~</code> ポインタ型に類似するユニーククロージャは、プロセス間で安全に送信できるものを所有します。共有クロージャと同じように値 (XXX: that it close over) をコピーしますが、さらにそれを「所有」します。つまり、他のコードはそれにアクセスできません。ユニーククロージャは並列コード内で、特に[タスク][#tasks]を生成するために使われます。</p>
+<h2 id="クロージャの互換性"><a href="#TOC"><span class="header-section-number">10.3</span> クロージャの互換性</a></h2>
+<p>Rust のクロージャには、 <code>fn()</code> を期待する関数に (引数と返り値の型が合う限り) 任意の種類のクロージャを渡せるという、素敵な性質があります。よって、引数で渡される関数について、単なる呼び出し以上のことをしない高階関数を書く場合は、ほぼ常に引数の型を <code>fn()</code> と指定すべきです。そうすれば、呼び出し側が好きなものを何でも渡せる柔軟性を持ちます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">call_twice</span>(<span class="cm-def">f</span>: <span class="cm-keyword">fn</span>()) { <span class="cm-variable">f</span>(); <span class="cm-variable">f</span>(); }
+<span class="cm-variable">call_twice</span>(|| { <span class="cm-variable">~</span><span class="cm-string">&quot;I am an inferred stack closure&quot;</span>; } );
+<span class="cm-variable">call_twice</span>(<span class="cm-keyword">fn</span>&amp;() { <span class="cm-variable">~</span><span class="cm-string">&quot;I am also a stack closure&quot;</span>; } );
+<span class="cm-variable">call_twice</span>(<span class="cm-keyword">fn@</span>() { <span class="cm-variable">~</span><span class="cm-string">&quot;I am a boxed closure&quot;</span>; });
+<span class="cm-variable">call_twice</span>(<span class="cm-keyword">fn~</span>() { <span class="cm-variable">~</span><span class="cm-string">&quot;I am a unique closure&quot;</span>; });
+<span class="cm-keyword">fn</span> <span class="cm-def">bare_function</span>() { <span class="cm-variable">~</span><span class="cm-string">&quot;I am a plain function&quot;</span>; }
+<span class="cm-variable">call_twice</span>(<span class="cm-variable">bare_function</span>);
+</pre>
+
+<h2 id="do-構文"><a href="#TOC"><span class="header-section-number">10.4</span> do 構文</a></h2>
+<p>Rust のクロージャは高階関数と連携して、 <code>if</code> や <code>loop</code> のような制御構造をシミュレートするために頻繁に用いられます。整数のベクタをイテレーションし、それぞれの要素にオペレータを適用する関数を考えましょう。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">each</span>(<span class="cm-def">v</span>: <span class="cm-variable-3">~</span>[<span class="cm-variable">int</span>], <span class="cm-def">op</span>: <span class="cm-keyword">fn</span>(<span class="cm-keyword">int</span>)) {
+   <span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">n</span> = <span class="cm-number">0</span>;
+   <span class="cm-keyword">while</span> <span class="cm-variable">n</span> &lt; <span class="cm-variable">v</span>.<span class="cm-variable">len</span>() {
+       <span class="cm-variable">op</span>(<span class="cm-variable">v</span>[<span class="cm-variable">n</span>]);
+       <span class="cm-variable">n</span> += <span class="cm-number">1</span>;
+   }
+}
+</pre>
+
+<p>呼び出し側で最後のオペレータの引数を提供するためにクロージャを使うと、心地良いブロックのような構造を持つ方法で記述できます。</p>
+<pre class="cm-s-default">
+<span class="cm-variable">each</span>(<span class="cm-variable">~</span>[<span class="cm-number">1</span>, <span class="cm-number">2</span>, <span class="cm-number">3</span>], |<span class="cm-variable">n</span>| {
+    <span class="cm-variable">debug</span>!(<span class="cm-string">&quot;%i&quot;</span>, <span class="cm-variable">n</span>);
+    <span class="cm-variable">do_some_work</span>(<span class="cm-variable">n</span>);
+});
+</pre>
+
+<p>これは役立つパターンなので、 Rust は組み込みの制御構造により近い記述が可能な、関数呼び出しの特別な形式を用意しています。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">do</span> <span class="cm-variable">each</span>(<span class="cm-variable">~</span>[<span class="cm-number">1</span>, <span class="cm-number">2</span>, <span class="cm-number">3</span>]) |<span class="cm-variable">n</span>| {
+    <span class="cm-variable">debug</span>!(<span class="cm-string">&quot;%i&quot;</span>, <span class="cm-variable">n</span>);
+    <span class="cm-variable">do_some_work</span>(<span class="cm-variable">n</span>);
+}
+</pre>
+
+<p>呼び出しは <code>do</code> キーワードが前に付けられ、最後のクロージャを引数リスト内に記述する代わりに、典型的なコードブロックと視覚的により近い、括弧の外に記述します。 <code>do</code> 式は、クロージャを引数の最後にとる呼び出しの、純粋な糖衣構文です。</p>
+<p><code>do</code> はタスクを生成するためによく用いられます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">use</span> <span class="cm-variable-2">task::</span><span class="cm-variable">spawn</span>;
+
+<span class="cm-keyword">do</span> <span class="cm-variable">spawn</span>() || {
+    <span class="cm-variable">debug</span>!(<span class="cm-string">&quot;I'm a task, whatever&quot;</span>);
+}
+</pre>
+
+<p>これは素敵ではありますが、バーと括弧に注目してください。立て続けに二つの空の引数リストを構成しています。これらが存在しなかったら素晴らしいに違いありません。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">do</span> <span class="cm-variable">spawn</span> {
+   <span class="cm-variable">debug</span>!(<span class="cm-string">&quot;Kablam!&quot;</span>);
+}
+</pre>
+
+<p>空の引数リストは <code>do</code> 式から省略できます。</p>
+<h2 id="for-ループ"><a href="#TOC"><span class="header-section-number">10.5</span> for ループ</a></h2>
+<p>Rust でのほとんどのイテレーションは <code>for</code> ループで行われます。 <code>do</code> のように、 <code>for</code> はクロージャでフローを制御するための素敵な構文です。加えて、 <code>for</code> ループ内では <code>while</code> や <code>loop</code> と同じように <code>break</code>, <code>again</code>, <code>return</code> が使えます。</p>
+<p><code>each</code> 関数を再び考えましょう。今回は iteratee が <code>false</code> を返したら、すぐにループを抜け出すように改善します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">each</span>(<span class="cm-def">v</span>: <span class="cm-variable-3">~</span>[<span class="cm-variable">int</span>], <span class="cm-def">op</span>: <span class="cm-keyword">fn</span>(<span class="cm-keyword">int</span>) -&gt; <span class="cm-keyword">bool</span>) {
+   <span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">n</span> = <span class="cm-number">0</span>;
+   <span class="cm-keyword">while</span> <span class="cm-variable">n</span> &lt; <span class="cm-variable">v</span>.<span class="cm-variable">len</span>() {
+       <span class="cm-keyword">if</span> !<span class="cm-variable">op</span>(<span class="cm-variable">v</span>[<span class="cm-variable">n</span>]) {
+           <span class="cm-keyword">break</span>;
+       }
+       <span class="cm-variable">n</span> += <span class="cm-number">1</span>;
+   }
+}
+</pre>
+
+<p>そして、ベクタをイテレーションするためにこの関数を使います。</p>
+<pre class="cm-s-default">
+<span class="cm-variable">each</span>(<span class="cm-variable">~</span>[<span class="cm-number">2</span>, <span class="cm-number">4</span>, <span class="cm-number">8</span>, <span class="cm-number">5</span>, <span class="cm-number">16</span>], |<span class="cm-variable">n</span>| {
+    <span class="cm-keyword">if</span> <span class="cm-variable">n</span> % <span class="cm-number">2</span> != <span class="cm-number">0</span> {
+        <span class="cm-variable">println</span>(<span class="cm-variable">~</span><span class="cm-string">&quot;found odd number!&quot;</span>);
+        <span class="cm-atom">false</span>
+    } <span class="cm-keyword">else</span> { <span class="cm-atom">true</span> }
+});
+</pre>
+
+<p><code>for</code> を使うことで、 <code>each</code> のような関数を組み込みのループ構造により近い形で扱えます。 <code>for</code> ループで <code>each</code> を呼び出す場合、ループから抜け出すために <code>false</code> を返す代わりに <code>break</code> と記述します。次のイテレーションの頭までスキップするには、 <code>again</code> と記述します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">for</span> <span class="cm-def">each</span>(<span class="cm-variable">~</span>[<span class="cm-number">2</span>, <span class="cm-number">4</span>, <span class="cm-number">8</span>, <span class="cm-number">5</span>, <span class="cm-number">16</span>]) |<span class="cm-variable">n</span>| {
+    <span class="cm-keyword">if</span> <span class="cm-variable">n</span> % <span class="cm-number">2</span> != <span class="cm-number">0</span> {
+        <span class="cm-variable">println</span>(<span class="cm-variable">~</span><span class="cm-string">&quot;found odd number!&quot;</span>);
+        <span class="cm-keyword">break</span>;
+    }
+}
+</pre>
+
+<p>加えて、 <code>for</code> ループの本体として現れるブロック内では、通常クロージャ内では許されない <code>return</code> キーワードも使えます。これは単にループ本体から抜けるだけではなく、外側の関数から戻ります。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">contains</span>(<span class="cm-def">v</span>: <span class="cm-variable-3">~</span>[<span class="cm-variable">int</span>], <span class="cm-def">elt</span>: <span class="cm-keyword">int</span>) -&gt; <span class="cm-keyword">bool</span> {
+    <span class="cm-keyword">for</span> <span class="cm-def">each</span>(<span class="cm-variable">v</span>) |<span class="cm-variable">x</span>| {
+        <span class="cm-keyword">if</span> (<span class="cm-variable">x</span> == <span class="cm-variable">elt</span>) { <span class="cm-variable">return</span> <span class="cm-atom">true</span>; }
+    }
+    <span class="cm-atom">false</span>
+}
+</pre>
+
+<p><code>for</code> 構文はスタッククロージャでのみ働きます。</p>
+<h1 id="generics"><a href="#TOC"><span class="header-section-number">11</span> Generics</a></h1>
+<h2 id="総称関数"><a href="#TOC"><span class="header-section-number">11.1</span> 総称関数</a></h2>
+<p>このチュートリアルを通して、一つのデータ型に対してのみ作用する関数を定義してきました。適用する型それぞれについて何度も何度も関数を定義するのは負担です。そこで、 Rust は関数やデータ型が型パラメタを持つことを許します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">map</span>&lt;<span class="cm-variable-3">T</span>, <span class="cm-variable-3">U</span>&gt;(<span class="cm-def">vector</span>: &amp;[<span class="cm-variable-3">T</span>], <span class="cm-def">function</span>: <span class="cm-keyword">fn</span>(<span class="cm-variable-3">T</span>) -&gt; <span class="cm-variable-3">U</span>) -&gt; <span class="cm-variable-3">~</span>[<span class="cm-def">U</span>] {
+    <span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">accumulator</span> = <span class="cm-variable">~</span>[];
+    <span class="cm-keyword">for</span> <span class="cm-def">vector</span>.<span class="cm-variable">each</span> |<span class="cm-variable">element</span>| {
+        <span class="cm-variable-2">vec::</span><span class="cm-variable">push</span>(<span class="cm-variable">accumulator</span>, <span class="cm-variable">function</span>(<span class="cm-variable">element</span>));
+    }
+    <span class="cm-variable">return</span> <span class="cm-variable">accumulator</span>;
+}
+</pre>
+
+<p>型パラメタとともに定義されるこの関数は、 <code>function</code> の引数型とベクタの要素型が合っている限り、任意のベクタ型に対して適用可能です。</p>
+<p>総称関数内で、型パラメタの名前 (慣例として大文字) は不透明型 (opaque type) を表します。その中を見ることはできませんが、周りに渡すことは可能です。</p>
+<h2 id="総称データ型"><a href="#TOC"><span class="header-section-number">11.2</span> 総称データ型</a></h2>
+<p>総称的な <code>type</code>, <code>struct</code>, <code>enum</code> 宣言は同じパターンに従います。</p>
+<pre class="cm-s-default">
+<span class="cm-variable">struct</span> <span class="cm-variable">Stack</span>&lt;<span class="cm-variable">T</span>&gt; {
+    <span class="cm-variable">elements</span>: <span class="cm-variable">~</span>[<span class="cm-variable">mut</span> <span class="cm-variable">T</span>]
+}
+
+<span class="cm-keyword">enum</span> <span class="cm-def">Maybe</span>&lt;<span class="cm-variable-3">T</span>&gt; {
+    <span class="cm-def">Just</span>(<span class="cm-variable-3">T</span>),
+    <span class="cm-def">Nothing</span>
+}
+</pre>
+
+<p>これらの宣言は <code>Stack&lt;u8&gt;</code> や <code>Maybe&lt;int&gt;</code> のような正当な型を生成します。</p>
+<h2 id="kind"><a href="#TOC"><span class="header-section-number">11.3</span> kind</a></h2>
+<p>おそらく驚くべきことに、 'copy' (複製) 操作は全ての Rust 型に対しては定義されていません。リソース型 (デストラクタを持つクラス) はコピー不可能で、コピー操作がリソースのコピーを必要とするあらゆる型 (リソースを含むレコードやユニークボックスなど) もコピー不可能です。</p>
+<p>このことは総称関数の取り扱いを複雑にします。もし型パラメタ <code>T</code> があるとき、その型の値をコピーすることは可能でしょうか? Rust では、型パラメタがコピー可能な <code>kind</code> を持つと明示的に宣言しない限り不可能です。 kind は型の型です。</p>
+<pre class="cm-s-default">
+<span class="cm-comment">// This does not compile</span>
+<span class="cm-keyword">fn</span> <span class="cm-def">head_bad</span>&lt;<span class="cm-variable-3">T</span>&gt;(<span class="cm-def">v</span>: <span class="cm-variable-3">~</span>[<span class="cm-variable">T</span>]) -&gt; <span class="cm-variable-3">T</span> { <span class="cm-variable">v</span>[<span class="cm-number">0</span>] }
+<span class="cm-comment">// This does</span>
+<span class="cm-keyword">fn</span> <span class="cm-def">head</span>&lt;<span class="cm-variable-3">T</span>: <span class="cm-variable-3">Copy</span>&gt;(<span class="cm-def">v</span>: <span class="cm-variable-3">~</span>[<span class="cm-variable">T</span>]) -&gt; <span class="cm-variable-3">T</span> { <span class="cm-variable">v</span>[<span class="cm-number">0</span>] }
+</pre>
+
+<p>総称関数は、 kind に適合する型でのみインスタンス化可能です。つまりリソース型に対して <code>head</code> を適当できません。 Rust には型制約 (type bound) として使える数種の kind があります。</p>
+<ul>
+<li><code>Copy</code> - コピー可能な型。デストラクタを持つクラスでなく、デストラクタを持つクラスを含む型でもなければ、全ての型はコピー可能です。</li>
+<li><code>Send</code> - 送信可能な型。共有ボックス、クロージャ (XXX: unique closure は OK じゃないの? ) 、その他ローカルヒープに割り当てられる型を含まなければ、全ての型は送信可能です。</li>
+<li><code>Const</code> - 定数型。変更可能なフィールドや共有ボックスを含まない型です。</li>
+</ul>
+<blockquote>
+<p><strong><em>注意:</em></strong> Rust の type kind は型制約 (type bound) として使われるとき、構文 的に <a href="#trait">trait</a> と非常によく似ていて、便宜的に組み込みの trait と考える ことが可能です。実際、将来的に type kind はコンパイラが特別な知識を持つ trait になるでしょう。</p>
+</blockquote>
+<h1 id="trait"><a href="#TOC"><span class="header-section-number">12</span> trait</a></h1>
+<p>trait は、オブジェクト指向言語がメソッドと継承を用いて解決する、値多相 (value polymorphism) に対する Rust の答えです。例えば、複数のコレクション型に作用する関数を書くのに用います。</p>
+<blockquote>
+<p><strong><em>注意:</em></strong> この機能はとても新しく、より進んだ使い方に適用するには少し拡張が 必要でしょう。</p>
+</blockquote>
+<h2 id="宣言"><a href="#TOC"><span class="header-section-number">12.1</span> 宣言</a></h2>
+<p>trait はメソッドの集合で構成されます。メソッドはドット記法 <code>self.foo(arg1, arg2)</code> を使って、値 <code>self</code> と複数の引数に対して適用できます。</p>
+<p>例えば文字列に変換できるオブジェクトのために、trait と同じ名前のメソッド <code>to_str</code> を一つ持つ trait <code>to_str</code> を宣言できます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">trait</span> <span class="cm-def">to_str</span> {
+    <span class="cm-keyword">fn</span> <span class="cm-def">to_str</span>() -&gt; <span class="cm-variable-3">~str</span>;
+}
+</pre>
+
+<h2 id="実装"><a href="#TOC"><span class="header-section-number">12.2</span> 実装</a></h2>
+<p>実際に型に trait を実装するためには、 <code>impl</code> 形式を使います。次の例は <code>int</code> と <code>~str</code> 型に <code>to_str</code> の実装を定義します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">impl</span> <span class="cm-def">int</span>: <span class="cm-variable">to_str</span> {
+    <span class="cm-keyword">fn</span> <span class="cm-def">to_str</span>() -&gt; <span class="cm-variable-3">~str</span> { <span class="cm-variable-2">int::</span><span class="cm-variable">to_str</span>(<span class="cm-keyword">self</span>, <span class="cm-number">10</span><span class="cm-variable">u</span>) }
+}
+<span class="cm-keyword">impl</span> <span class="cm-def">~str</span>: <span class="cm-variable">to_str</span> {
+    <span class="cm-keyword">fn</span> <span class="cm-def">to_str</span>() -&gt; <span class="cm-variable-3">~str</span> { <span class="cm-keyword">self</span> }
+}
+</pre>
+
+<p>これらが与えられるとき、、 <code>1.to_str()</code> を呼び出すと <code>~&quot;1&quot;</code> 、また <code>(~&quot;foo&quot;).to_str()</code> を呼び出すと <code>~&quot;foo&quot;</code> が得られます。これは基本的に静的な多重定義の一種です。 Rust は <code>to_str</code> メソッドの呼び出しを見つけると、名前の一致するメソッドを持ち、型の一致する実装を探し出して、単純にそれを呼び出します。</p>
+<h2 id="制約付き型パラメタ"><a href="#TOC"><span class="header-section-number">12.3</span> 制約付き型パラメタ</a></h2>
+<p>値多相の有用なところは、静的である必要がないことです。仮にオブジェクト指向言語で、オブジェクトの sub-type が正確に判明していないとメソッドを呼び出せないとしたら、たいしたことはできない (that would not get you very far) でしょう。コンパイル時に型の分からないメソッドを呼びだすために、型パラメタに「制約 (bound) 」を明示できます。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">comma_sep</span>&lt;<span class="cm-variable-3">T</span>: <span class="cm-variable-3">to_str</span>&gt;(<span class="cm-def">elts</span>: <span class="cm-variable-3">~</span>[<span class="cm-variable">T</span>]) -&gt; <span class="cm-variable-3">~str</span> {
+    <span class="cm-keyword">let</span> <span class="cm-def">mut</span> <span class="cm-def">result</span> = <span class="cm-variable">~</span><span class="cm-string">&quot;&quot;</span>, <span class="cm-def">first</span> = <span class="cm-atom">true</span>;
+    <span class="cm-keyword">for</span> <span class="cm-def">elts</span>.<span class="cm-variable">each</span> |<span class="cm-variable">elt</span>| {
+        <span class="cm-keyword">if</span> <span class="cm-variable">first</span> { <span class="cm-variable">first</span> = <span class="cm-atom">false</span>; }
+        <span class="cm-keyword">else</span> { <span class="cm-variable">result</span> += <span class="cm-variable">~</span><span class="cm-string">&quot;, &quot;</span>; }
+        <span class="cm-variable">result</span> += <span class="cm-variable">elt</span>.<span class="cm-variable">to_str</span>();
+    }
+    <span class="cm-variable">return</span> <span class="cm-variable">result</span>;
+}
+</pre>
+
+<p>この構文は型パラメタがコピー可能 (原理上は別の種類の制約) である明示する構文と似ています。 <code>T</code> が trait <code>to_str</code> に適合すると宣言することで、関数内でその型の値に対して trait からメソッドを呼び出すことが可能になります。また、要素の型がスコープ内で <code>to_str</code> の実装を持たない配列に対して <code>comma_sep</code> を呼び出そうとすると、コンパイルエラーを引き起こします。</p>
+<h2 id="多相的な-trait"><a href="#TOC"><span class="header-section-number">12.4</span> 多相的な trait</a></h2>
+<p>trait は型パラメタを含むことが可能です。一般化されたシーケンス型の trait は次のように記述します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">trait</span> <span class="cm-def">seq</span>&lt;<span class="cm-variable-3">T</span>&gt; {
+    <span class="cm-keyword">fn</span> <span class="cm-def">len</span>() -&gt; <span class="cm-keyword">uint</span>;
+    <span class="cm-keyword">fn</span> <span class="cm-def">iter</span>(<span class="cm-keyword">fn</span>(<span class="cm-variable">T</span>));
+}
+<span class="cm-keyword">impl</span>&lt;<span class="cm-variable-3">T</span>&gt; <span class="cm-def">~</span>[<span class="cm-variable">T</span>]: <span class="cm-variable">seq</span>&lt;<span class="cm-variable">T</span>&gt; {
+    <span class="cm-keyword">fn</span> <span class="cm-def">len</span>() -&gt; <span class="cm-keyword">uint</span> { <span class="cm-variable-2">vec::</span><span class="cm-variable">len</span>(<span class="cm-keyword">self</span>) }
+    <span class="cm-keyword">fn</span> <span class="cm-def">iter</span>(<span class="cm-def">b</span>: <span class="cm-keyword">fn</span>(<span class="cm-variable-3">T</span>)) {
+        <span class="cm-keyword">for</span> <span class="cm-keyword">self</span>.<span class="cm-variable">each</span> |<span class="cm-variable">elt</span>| { <span class="cm-variable">b</span>(<span class="cm-variable">elt</span>); }
+    }
+}
+</pre>
+
+<p>実装は、 trait type を指定するために型パラメタ <code>T</code> を使う前に、 <code>T</code> を明示的に宣言する必要があります。 Rust がこの宣言を必要とするのは、 <code>impl</code> が例えば <code>seq&lt;int&gt;</code> の実装を指定することも可能だからです。 (<code>impl</code> のコロンの後ろに現れる) trait type は、型を定義するのではなく<em>参照</em>します。</p>
+<p>trait によって束縛される型パラメタは、各メソッド宣言のスコープに存在します (The type parameters bound by a trait are in scope in each of the method declarations) 。従って、 (trait と impl のどちらかで) <code>T</code> を <code>len</code> のための明示的な型パラメタとして再宣言すると、コンパイルエラーになります。</p>
+<h2 id="trait-内での-self-型"><a href="#TOC"><span class="header-section-number">12.5</span> trait 内での <code>self</code> 型</a></h2>
+<p>trait 内では、型パラメタと見なせる特殊な型 <code>self</code> が存在します。任意の型 <code>T</code> に対する trait の実装は <code>self</code> 型パラメタを <code>T</code> に置き換えます。次の trait は、等値性演算をサポートする型を記述します。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">trait</span> <span class="cm-def">eq</span> {
+  <span class="cm-keyword">fn</span> <span class="cm-def">equals</span>(&amp;&amp;<span class="cm-variable">other</span>: <span class="cm-keyword">self</span>) -&gt; <span class="cm-keyword">bool</span>;
+}
+
+<span class="cm-keyword">impl</span> <span class="cm-def">int</span>: <span class="cm-variable">eq</span> {
+  <span class="cm-keyword">fn</span> <span class="cm-def">equals</span>(&amp;&amp;<span class="cm-variable">other</span>: <span class="cm-variable">int</span>) -&gt; <span class="cm-keyword">bool</span> { <span class="cm-variable">other</span> == <span class="cm-keyword">self</span> }
+}
+</pre>
+
+<p>型 <code>int</code> のための実装で、 <code>equals</code> が <code>self</code> 引数ではなく <code>int</code> 引数をとることに注意してください。</p>
+<h2 id="trait-型へのキャスト"><a href="#TOC"><span class="header-section-number">12.6</span> trait 型へのキャスト</a></h2>
+<p>上述の方法で、与えられた trait に適合する<em>単一の</em>不明な型を持つ値に対して、多相的に振る舞う関数を定義できます。しかし、次の関数について考えてください。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">draw_all</span>&lt;<span class="cm-variable-3">T</span>: <span class="cm-variable-3">drawable</span>&gt;(<span class="cm-def">shapes</span>: <span class="cm-variable-3">~</span>[<span class="cm-variable">T</span>]) {
+    <span class="cm-keyword">for</span> <span class="cm-def">shapes</span>.<span class="cm-variable">each</span> |<span class="cm-variable">shape</span>| { <span class="cm-variable">shape</span>.<span class="cm-variable">draw</span>(); }
+}
+</pre>
+
+<p>この関数は circle の配列や square の配列 (適切な <code>drawable</code> trait が定義されていると仮定します) に対して呼び出せます。しかし circle と square 両方を含む配列に対しては呼び出せません。</p>
+<p>これが必要な場合、 trait の名前を型として使うことが可能で、関数は単純に、次のように記述することになります。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">fn</span> <span class="cm-def">draw_all</span>(<span class="cm-def">shapes</span>: <span class="cm-variable-3">~</span>[<span class="cm-variable">drawable</span>]) {
+    <span class="cm-keyword">for</span> <span class="cm-def">shapes</span>.<span class="cm-variable">each</span> |<span class="cm-variable">shape</span>| { <span class="cm-variable">shape</span>.<span class="cm-variable">draw</span>(); }
+}
+</pre>
+
+<p>もはや型パラメタはありません (関数を適用する単一の型がないため) 。代わりに <code>drawable</code> 型が使われます。この型は参照カウントされるボックス型で、 <code>drawable</code> の実装が存在する値と、メソッドを探索する場所の情報を含みます。これは多くのオブジェクト指向言語での 'vtable' (仮想関数テーブル) に、非常によく似ています。</p>
+<p>このような値を構築するためには、値を trait 型にキャストする <code>as</code> 演算子を使います。</p>
+<pre class="cm-s-default">
+<span class="cm-keyword">let</span> <span class="cm-def">c</span>: <span class="cm-variable-3">circle</span> = <span class="cm-variable">new_circle</span>();
+<span class="cm-keyword">let</span> <span class="cm-def">r</span>: <span class="cm-variable-3">rectangle</span> = <span class="cm-variable">new_rectangle</span>();
+<span class="cm-variable">draw_all</span>(<span class="cm-variable">~</span>[<span class="cm-variable">c</span> <span class="cm-keyword">as</span> <span class="cm-variable">drawable</span>, <span class="cm-variable">r</span> <span class="cm-keyword">as</span> <span class="cm-variable">drawable</span>]);
+</pre>
+
+<p>これは実装についての情報と一緒に、値をボックスに格納します (実装はキャストのスコープ内で探索されます) 。 <code>drawable</code> 型は単純にそのようなボックスを参照し、たとえスコープ上にどんな実装があっても、ボックスに対するメソッドの呼び出しは常に機能します。</p>
+<p>ボックスの割り当ては、単純に型パラメタを使って値をそのまま渡すより少し高価で、静的に解決されるメソッド呼び出しよりずっと高価です。</p>
+<h2 id="trait-のない実装"><a href="#TOC"><span class="header-section-number">12.7</span> trait のない実装</a></h2>
+<p>静的な多重定義のためだけに実装を使うつもりで、適合する trait もない場合、コロンの後ろの型を記述しなくても構いません。ただし、これはレシーバ型と同じモジュールで実装を定義し、レシーバ型が名前のある型 (つまり enum または class) である場合にのみ可能です。 <a href="#single_variant_enum">single-variant enums</a> が一般的な選択肢です。</p>
+</body>
+</html>

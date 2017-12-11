@@ -1,0 +1,34 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>TCP server by hand</title>
+		<link rel="stylesheet" href="/default.css">
+	</head>
+<body>
+
+<h1>TCP server by hand</h1>
+
+<h2>Download</h2>
+<p><a href="./src/servByHand-0.2.py">servByHand-0.2.py</a> (要 Python &gt;= 2.5, readline)</p>
+
+<h2>これ何</h2>
+<p>手で応答する TCP サーバ。 telnet のサーバ版みたいな感じ。 telnet でサーバプログラムのテストをすることがあるけど、その逆でクライアントプログラムのテストに使える。</p>
+
+<h2>特徴</h2>
+<ul>
+	<li>非同期な実装。</li>
+	<li>クライアントからデータが送信されると即時表示され、かつ入力中の内容を乱さない。</li>
+	<li>入力に readline を用いているので、送信内容の編集が容易。</li>
+</ul>
+
+<h2>バグ</h2>
+<ul>
+	<li><del>受信したデータに適当に改行が追加される。まあいいや。</del> → 修正。</li>
+</ul>
+
+<p><a href="../">戻る</a></p>
+<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

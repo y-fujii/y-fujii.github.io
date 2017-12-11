@@ -1,0 +1,265 @@
+Index: release/scripts/startup/bl_ui/properties_material.py
+===================================================================
+--- release/scripts/startup/bl_ui/properties_material.py	(revision 36300)
++++ release/scripts/startup/bl_ui/properties_material.py	(working copy)
+@@ -330,6 +330,7 @@
+             col = split.column()
+             sub = col.column()
+             sub.active = not mat.use_shadeless
++            sub.prop(mat, "emit_color", text="")
+             sub.prop(mat, "emit")
+             sub.prop(mat, "ambient")
+             sub = col.column()
+Index: source/blender/render/intern/source/shadeoutput.c
+===================================================================
+--- source/blender/render/intern/source/shadeoutput.c	(revision 36300)
++++ source/blender/render/intern/source/shadeoutput.c	(working copy)
+@@ -1698,14 +1698,14 @@
+ 	}
+ 
+ 	if( (ma->mode & (MA_VERTEXCOL|MA_VERTEXCOLP))== MA_VERTEXCOL ) {	// vertexcolor light
+-		shr->emit[0]= shi->r*(shi->emit+shi->vcol[0]);
+-		shr->emit[1]= shi->g*(shi->emit+shi->vcol[1]);
+-		shr->emit[2]= shi->b*(shi->emit+shi->vcol[2]);
++		shr->emit[0]= shi->emit * shi->vcol[0];
++		shr->emit[1]= shi->emit * shi->vcol[1];
++		shr->emit[2]= shi->emit * shi->vcol[2];
+ 	}
+ 	else {
+-		shr->emit[0]= shi->r*shi->emit;
+-		shr->emit[1]= shi->g*shi->emit;
+-		shr->emit[2]= shi->b*shi->emit;
++		shr->emit[0]= shi->emit * shi->emitr;
++		shr->emit[1]= shi->emit * shi->emitg;
++		shr->emit[2]= shi->emit * shi->emitb;
+ 	}
+ 	
+ 	/* AO pass */
+Index: source/blender/render/extern/include/RE_shader_ext.h
+===================================================================
+--- source/blender/render/extern/include/RE_shader_ext.h	(revision 36300)
++++ source/blender/render/extern/include/RE_shader_ext.h	(working copy)
+@@ -123,11 +123,12 @@
+ 	float co[3], view[3], camera_co[3];
+ 	
+ 	/* copy from material, keep synced so we can do memcopy */
+-	/* current size: 23*4 */
++	/* current size: 26*4 */
+ 	float r, g, b;
+ 	float specr, specg, specb;
+ 	float mirr, mirg, mirb;
+ 	float ambr, ambb, ambg;
++	float emitr, emitg, emitb;
+ 	
+ 	float amb, emit, ang, spectra, ray_mirror;
+ 	float alpha, refl, spec, zoffs, add;
+Index: source/blender/blenkernel/intern/material.c
+===================================================================
+--- source/blender/blenkernel/intern/material.c	(revision 36300)
++++ source/blender/blenkernel/intern/material.c	(working copy)
+@@ -111,6 +111,7 @@
+ 	ma->r= ma->g= ma->b= ma->ref= 0.8;
+ 	ma->specr= ma->specg= ma->specb= 1.0;
+ 	ma->mirr= ma->mirg= ma->mirb= 1.0;
++	ma->emitr= ma->emitg= ma->emitb= 1.0;
+ 	ma->spectra= 1.0;
+ 	ma->amb= 1.0;
+ 	ma->alpha= 1.0;
+Index: source/blender/makesdna/DNA_material_types.h
+===================================================================
+--- source/blender/makesdna/DNA_material_types.h	(revision 36300)
++++ source/blender/makesdna/DNA_material_types.h	(working copy)
+@@ -79,11 +79,13 @@
+ 	struct AnimData *adt;	/* animation data (must be immediately after id for utilities to use it) */ 
+ 	
+ 	short material_type, flag;	
++	int pad4a;
+ 	/* note, keep this below synced with render_types.h */
+ 	float r, g, b;
+ 	float specr, specg, specb;
+ 	float mirr, mirg, mirb;
+ 	float ambr, ambb, ambg;
++	float emitr, emitg, emitb;
+ 	float amb, emit, ang, spectra, ray_mirror;
+ 	float alpha, ref, spec, zoffs, add;
+ 	float translucency;
+@@ -138,7 +140,7 @@
+ 	struct ColorBand *ramp_spec;
+ 	char rampin_col, rampin_spec;
+ 	char rampblend_col, rampblend_spec;
+-	short ramp_show, pad3;
++	short ramp_show, pad2a;
+ 	float rampfac_col, rampfac_spec;
+ 
+ 	struct MTex *mtex[18];		/* MAX_MTEX */
+@@ -150,7 +152,7 @@
+ 	/* dynamic properties */
+ 	float friction, fh, reflect;
+ 	float fhdist, xyfrict;
+-	short dynamode, pad2;
++	short dynamode, pad2b;
+ 
+ 	/* subsurface scattering */
+ 	float sss_radius[3], sss_col[3];
+@@ -161,7 +163,7 @@
+ 
+ 	int mapto_textured;	/* render-time cache to optimise texture lookups */
+ 	short shadowonly_flag;		/* "shadowsonly" type */
+-	short pad;
++	short pad2c;
+ 
+ 	ListBase gpumaterial;		/* runtime */
+ } Material;
+Index: source/blender/gpu/intern/gpu_draw.c
+===================================================================
+--- source/blender/gpu/intern/gpu_draw.c	(revision 36300)
++++ source/blender/gpu/intern/gpu_draw.c	(working copy)
+@@ -881,6 +881,7 @@
+ typedef struct GPUMaterialFixed {
+ 	float diff[4];
+ 	float spec[4];
++	float emit[4];
+ 	int hard;
+ } GPUMaterialFixed; 
+ 
+@@ -918,9 +919,12 @@
+ 		}	
+ 	}
+ 	else {
+-		mul_v3_v3fl(smat->diff, &bmat->r, bmat->ref + bmat->emit);
++		mul_v3_v3fl(smat->diff, &bmat->r, bmat->ref);
+ 		smat->diff[3]= 1.0; /* caller may set this to bmat->alpha */
+ 
++		mul_v3_v3fl(smat->emit, &bmat->emitr, bmat->emit);
++		smat->emit[3]= 1.0; /* caller may set this to bmat->alpha */
++
+ 		if(bmat->shade_flag & MA_OBCOLOR)
+ 			mul_v3_v3(smat->diff, ob->col);
+ 		
+@@ -930,6 +934,7 @@
+ 
+ 		if(gamma) {
+ 			linearrgb_to_srgb_v3_v3(smat->diff, smat->diff);
++			linearrgb_to_srgb_v3_v3(smat->emit, smat->emit);
+ 			linearrgb_to_srgb_v3_v3(smat->spec, smat->spec);
+ 		}	
+ 	}
+@@ -1049,17 +1054,21 @@
+ 
+ 	/* no GPU_begin_object_materials, use default material */
+ 	if(!GMS.matbuf) {
+-		float diff[4], spec[4];
++		float diff[4], emit[4], spec[4];
+ 
+ 		memset(&GMS, 0, sizeof(GMS));
+ 
+-		mul_v3_v3fl(diff, &defmaterial.r, defmaterial.ref + defmaterial.emit);
++		mul_v3_v3fl(diff, &defmaterial.r, defmaterial.ref);
+ 		diff[3]= 1.0;
+ 
++		mul_v3_v3fl(emit, &defmaterial.emitr, defmaterial.emit);
++		diff[3]= 1.0;
++
+ 		mul_v3_v3fl(spec, &defmaterial.specr, defmaterial.spec);
+ 		spec[3]= 1.0;
+ 
+ 		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diff);
++		glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emit);
+ 		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, spec);
+ 		glMateriali(GL_FRONT_AND_BACK, GL_SHININESS, 35); /* blender default */
+ 
+@@ -1106,6 +1115,7 @@
+ 		else {
+ 			/* or do fixed function opengl material */
+ 			glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, GMS.matbuf[nr].diff);
++			glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, GMS.matbuf[nr].emit);
+ 			glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, GMS.matbuf[nr].spec);
+ 			glMateriali(GL_FRONT_AND_BACK, GL_SHININESS, GMS.matbuf[nr].hard);
+ 		}
+@@ -1318,15 +1328,16 @@
+ void GPU_state_init(void)
+ {
+ 	/* also called when doing opengl rendering and in the game engine */
+-	float mat_ambient[] = { 0.0, 0.0, 0.0, 0.0 };
+-	float mat_specular[] = { 0.5, 0.5, 0.5, 1.0 };
++	float mat_zero[] = { 0.0, 0.0, 0.0, 1.0 };
++	float mat_half[] = { 0.5, 0.5, 0.5, 1.0 };
+ 	int a, x, y;
+ 	GLubyte pat[32*32];
+ 	const GLubyte *patc= pat;
+ 	
+-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
+-	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_specular);
+-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
++	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_zero);
++	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_half);
++	glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, mat_zero);
++	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_half);
+ 	glMateriali(GL_FRONT_AND_BACK, GL_SHININESS, 35);
+ 
+ 	GPU_default_lights();
+Index: source/blender/gpu/intern/gpu_material.c
+===================================================================
+--- source/blender/gpu/intern/gpu_material.c	(revision 36300)
++++ source/blender/gpu/intern/gpu_material.c	(working copy)
+@@ -1249,6 +1249,7 @@
+ 
+ 	GPU_link(mat, "set_rgb", GPU_uniform(&ma->r), &shi->rgb);
+ 	GPU_link(mat, "set_rgb", GPU_uniform(&ma->specr), &shi->specrgb);
++	GPU_link(mat, "set_rgb", GPU_uniform(&ma->emitr), &shi->emitrgb);
+ 	GPU_link(mat, "shade_norm", GPU_builtin(GPU_VIEW_NORMAL), &shi->vn);
+ 	GPU_link(mat, "set_value", GPU_uniform(&ma->alpha), &shi->alpha);
+ 	GPU_link(mat, "set_value", GPU_uniform(&ma->ref), &shi->refl);
+@@ -1288,11 +1289,10 @@
+ 	else {
+ 		if(GPU_link_changed(shi->emit) || ma->emit != 0.0f) {
+ 			if((ma->mode & (MA_VERTEXCOL|MA_VERTEXCOLP))== MA_VERTEXCOL) {
+-				GPU_link(mat, "shade_add", shi->emit, shi->vcol, &emit);
+-				GPU_link(mat, "shade_mul", emit, shi->rgb, &shr->diff);
++				GPU_link(mat, "shade_mul_value", shi->emit, shi->vcol, &shr->diff);
+ 			}
+ 			else
+-				GPU_link(mat, "shade_mul_value", shi->emit, shi->rgb, &shr->diff);
++				GPU_link(mat, "shade_mul_value", shi->emit, shi->emitrgb, &shr->diff);
+ 		}
+ 		else
+ 			GPU_link(mat, "set_rgb_zero", &shr->diff);
+Index: source/blender/gpu/GPU_material.h
+===================================================================
+--- source/blender/gpu/GPU_material.h	(revision 36300)
++++ source/blender/gpu/GPU_material.h	(working copy)
+@@ -142,7 +142,7 @@
+ 	GPUMaterial *gpumat;
+ 	struct Material *mat;
+ 
+-	GPUNodeLink *rgb, *specrgb, *vn, *view, *vcol, *ref;
++	GPUNodeLink *rgb, *specrgb, *emitrgb, *vn, *view, *vcol, *ref;
+ 	GPUNodeLink *alpha, *refl, *spec, *emit, *har, *amb;
+ } GPUShadeInput;
+ 
+Index: source/blender/makesrna/intern/rna_material.c
+===================================================================
+--- source/blender/makesrna/intern/rna_material.c	(revision 36300)
++++ source/blender/makesrna/intern/rna_material.c	(working copy)
+@@ -1631,6 +1631,12 @@
+ 	RNA_def_property_ui_text(prop, "Emit", "Amount of light to emit");
+ 	RNA_def_property_update(prop, 0, "rna_Material_draw_update");
+ 
++	prop= RNA_def_property(srna, "emit_color", PROP_FLOAT, PROP_COLOR);
++	RNA_def_property_float_sdna(prop, NULL, "emitr");
++	RNA_def_property_array(prop, 3);
++	RNA_def_property_ui_text(prop, "Emission Color", "");
++	RNA_def_property_update(prop, 0, "rna_Material_draw_update");
++
+ 	prop= RNA_def_property(srna, "translucency", PROP_FLOAT, PROP_FACTOR);
+ 	RNA_def_property_range(prop, 0, 1);
+ 	RNA_def_property_ui_text(prop, "Translucency", "Amount of diffuse shading on the back side");
+@@ -1693,7 +1699,7 @@
+ 	
+ 	prop= RNA_def_property(srna, "use_vertex_color_light", PROP_BOOLEAN, PROP_NONE);
+ 	RNA_def_property_boolean_sdna(prop, NULL, "mode", MA_VERTEXCOL);
+-	RNA_def_property_ui_text(prop, "Vertex Color Light", "Add vertex colors as additional lighting");
++	RNA_def_property_ui_text(prop, "Vertex Color Light", "Replaces emission color with vertex colors");
+ 	RNA_def_property_update(prop, 0, "rna_Material_update");
+ 
+ 	prop= RNA_def_property(srna, "use_vertex_color_paint", PROP_BOOLEAN, PROP_NONE);

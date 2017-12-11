@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8"> 
+		<title>Total Variation minimization による画像拡大</title>
+		<script defer type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_SVG.js"></script>
+		<link rel="stylesheet" href="/default.css">
+    </head>
+<body>
+
+<script type="math/tex">
+	\newcommand{\block}[2]{\begin{#1} #2 \end{#1}}
+	\newcommand{\D}{\mathrm{d}}
+	\renewcommand{\(}{\left(}
+	\renewcommand{\)}{\right)}
+</script>
+
+<h1>Total Variation minimization による画像拡大</h1>
+
+<h2>ダウンロード</h2>
+<p><a href="/src/tvresize-1.1.tar.gz">tvresize-1.1.tar.gz</a> (20120414) / <a href="/src/tvresize.cpp">ソースを見る</a></p>
+
+<h2>ビルド &amp; 使い方</h2>
+<p>libpng と boost が必要。</p>
+<pre>
+$ make
+$ ./tvresize
+Usage: tvresize -s &lt;scale&gt; -c &lt;iteration count&gt; [-f &lt;smoothness&gt;] src.png dst.png
+</pre>
+<p>-s と -c は必須でパラメータは整数値のみ。 -f は滑らかさを表すパラメータで 1.0 以上の実数値。デフォルト値は 1.0 で、このとき拡大画像を単純な box フィルタで元のサイズに縮小すると元画像と完全に一致する。値を大きいほど元画像からズレを許容して滑らかな画像を生成する。</p>
+
+<h2>これは何</h2>
+<p><a href="http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.54.9354">&quot;Total Variation Based Interpolation&quot;, F. Guichard, F. Malgouyres, 1998</a> を実装してみたつもりなんだけど、「縮小画像が元画像と一致する拘束条件のもとで \( \int | \nabla \phi | \) を最小化する」という基本的アイデアを漠然と理解しただけで、全然まともに読んでないので何か違う方程式を解いているかもしれない。</p>
+<p>少なくとも最小化の方法は論文とは違っている。まず最小化したい値</p>
+<div class="math">\[
+\block{align*}{
+	\int \D x \D y | \nabla \phi |
+}
+\]</div>
+<p>が極小点にいるとき、変分原理から次の偏微分方程式が成り立つ。</p>
+<div class="math">\[
+\block{align*}{
+	\nabla \left( \frac{\nabla \phi}{|\nabla \phi|} \right) = 0
+}
+\]</div>
+<p>これを二次元の場合にバラして整理する。</p>
+<div class="math">\[
+\block{align*}{
+	(\partial_x \phi)^2 {\partial_y}^2 \phi + (\partial_y \phi)^2 {\partial_x}^2 \phi - 2 \partial_x \phi \partial_y \phi \partial_x \partial_y \phi = 0
+}
+\]</div>
+<p>次にこれを中心差分で差分化すると、運よく (?) \( \phi(x, y) \) について線形になっている。そこで \( \phi(x, y) \) について解くと、</p>
+<div class="math">\[
+\block{align}{
+	\delta_x \phi(x, y) &amp;\equiv \frac{\phi(x+1, y) - \phi(x-1, y)}{2}
+	\\
+	\delta_y \phi(x, y) &amp;\equiv \frac{\phi(x, y+1) - \phi(x, y-1)}{2}
+}
+\]</div>
+<div class="math">\[
+\block{align}{
+	\phi(x, y) = \frac{
+		2 \delta_x \phi \delta_y \phi \delta_x \delta_y \phi
+		- (\delta_x \phi)^2 \left\{ \phi(x, y-1) + \phi(x, y+1) \right\}
+		- (\delta_y \phi)^2 \left\{ \phi(x-1, y) + \phi(x+1, y) \right\}
+	}
+	{4 \left\{ (\delta_x \phi)^2 + (\delta_y \phi)^2 \right\}}
+}
+\]</div>
+<p>となるので、これを Jacobi 法よろしく単純に反復する。…と収束しないので、少しもとの \( \phi \) を混ぜつつ反復している。</p>
+<p>ちょっと調べてみると、 TV 最小化の計算手法はかなり研究されているよう。上記の単純な方法が他の賢い手法と比べてどのくらい遅いのかは確かめていない（適当）。</p>
+
+<p>追記(20120415): 上の式変形には気をつけなければいけないところがあって、拘束条件をラグランジュの未定乗数法か何かで取り入れたとすると、その項には次のように \( \left| \nabla \phi \right| \) がかかる。</p>
+<div class="math">\[
+\block{align*}{
+	\nabla \left( \frac{\nabla \phi}{|\nabla \phi|} \right) + (\text{constraint terms}) = 0
+}
+\]</div>
+<div class="math">\[
+\block{align*}{
+	(\partial_x \phi)^2 {\partial_y}^2 \phi + (\partial_y \phi)^2 {\partial_x}^2 \phi - 2 \partial_x \phi \partial_y \phi \partial_x \partial_y \phi + {\left| \nabla \phi \right|}^{3} (\text{constraint terms}) = 0
+}
+\]</div>
+<div class="math">\[
+\block{align*}{
+	\phi(x, y) = (\cdots) + \sqrt{(\delta_x \phi)^2 + (\delta_y \phi)^2} \  (\text{constraint terms})
+}
+\]</div>
+<p>でも、結果がいまいちなので、この係数は今のところ取り込んでいなかったりする。これは単純に間違いというわけではなくて、原論文でいう射影演算子 P の任意性をどう取るか、ということに対応していると思うんだけど、よく考えていない。</p>
+
+<h2>例</h2>
+<p>左から原画像、このプログラムの結果、 lanczos3 での結果。</p>
+<p>
+<img src="./img/tvresize/fork.png">
+<img src="./img/tvresize/fork_x4.png">
+<img src="./img/tvresize/fork_l4.png">
+</p>
+<p>
+<img src="./img/tvresize/ajisai.png">
+<img src="./img/tvresize/ajisai_x4.png">
+<img src="./img/tvresize/ajisai_l4.png">
+</p>
+
+<p><a href="../">cd ../</a></p>
+<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

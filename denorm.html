@@ -1,0 +1,130 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <title>浮動小数点数 Tips</title>
+        <link rel="stylesheet" href="/default.css">
+    </head>
+<body>
+
+<h1>浮動小数点数 Tips</h1>
+<p>浮動小数点数の表現に関する、特徴的な部分や罠にはまりそうな部分の非包括的すぎるメモ。浮動小数点数がおおざっぱに <code>x * (2 ** y)</code> みたいに表現されていることは知っているけど、詳細はよく知らんという向け。</p>
+
+<h2>正規化数と非正規化数</h2>
+<p>浮動小数点数の符号化方式として標準的な IEEE754 では、</p>
+<pre>
+± (1.xxxx) * 2 ** (yyyy - bias)    // xxxx, yyyy は二進数
+</pre>
+<p>の形で符号、仮数部 <code>xxxx</code> 、指数部 <code>yyyy</code> を符号化する。仮数部の 1 は符号化しないのがポイント。 1-bit 節約できる以上に、仮数部が自然に [1, 2) の範囲に制限され、任意のビット列 <code>xxxx yyyy</code> と浮動小数点数が (だいたい) 1:1 対応するのが気持ちいい。この形で表される数を正規化数と呼ぶ。</p>
+<p>ただ、このままでは表現できる値の絶対値に下限ができてしまう。0 も表現できないし、仮に 0 に対応する表現を例外的に設けたとしても、 0 と最小の正規数の間がもの凄ーく開いてしまう。</p>
+<p>そこで非正規化数 (denormal number / denormalized number) というものを考える。これは 0 と最小正規化数の間を固定小数点でつなぐもので、指数部が最小のときは例外的に仮数部の解釈を</p>
+<pre>
+± (0.xxxx) * 2 ** (最小の指数 + 1)
+</pre>
+<p>と変えることで導入される。</p>
+<p>刻み幅は以下のようなイメージ。</p>
+<pre>
+                0       最小正規化数
+                :       :
+非正規化数なし -+---+++++-+-+-+-+---+---+---+---+-------+-------+-------+-----
+                :       :
+非正規化数あり -+-+-+-+-+-+-+-+-+---+---+---+---+-------+-------+-------+-----
+                :       :
+</pre>
+<p>非正規化数の分かりやすいメリットとしては、例えば <code>x == y</code> と <code>x - y == 0.0</code> が (後述の <code>NaN, Inf</code> を除いて) 等価になる。</p>
+<p>もちろん非正規化数が 0 近傍の問題を何でも解決してくれるわけではない。非正規化数は固定小数点表現なので、乗除算については気をつける必要がある。例として、信号処理でよく使われる sinc 関数の実装を考える。</p>
+<pre>
+double sinc( double x ) {
+    if( x == 0.0 )
+        return 1.0;
+    else
+        return sin( x ) / x;
+}
+</pre>
+<p>この関数は x が非正規化数に突入すると精度的にまずい。つまり、</p>
+<pre>
+double sinc( double x ) {
+    // std::numeric_limits&lt;double&gt;::min() は double の最小正規化数。
+    if( x &lt; numeric_limits&lt;double&gt;::min() )
+        return 1.0;
+    else
+        return sin( x ) / x;
+}
+</pre>
+<p>こう実装するのが正しい（ただし sinc(x) = 1 + O(x^2) なので、この場合は 1e-8 くらいで分けても十分だったりする。例が良くない…）。</p>
+
+<h2>特殊な数の表現</h2>
+<p>IEEE754 には正規化数と非正規化数の他にいくつか特殊な数表現がある。</p>
+<pre>
+-0, +0, -Inf, +Inf, qNaN, sNaN
+</pre>
+<p><code>Inf</code> は無限大に相当する表現で、 <code>1.0 / 0.0</code> や結果が正規数の最大値を超えた場合に返される。 <code>-0, +0, -Inf, +Inf</code> に関しては、そこそこ予想される範囲内の挙動をする (と思う) 。 <code>1.0 / (-0) == -Inf</code> とか。なので詳細略。</p>
+<p>問題は <code>NaN</code> 。 Not a Number の略。こいつは <code>0.0 / 0.0</code> や <code>Inf - Inf</code> など結果が不定な場合に返される他、 <code>sqrt(-1.0)</code> なんかの未定義の演算でも生成される。 <code>NaN</code> の何が怖いかというと</p>
+<pre>
+NaN &lt; NaN, NaN == NaN, NaN != NaN, NaN &gt; NaN は全て偽
+</pre>
+<p>であること。つまり浮動小数点数 x に関して</p>
+<pre>
+(x == x) や (x &lt;= 0.0 || 0.0 &lt; x) のような式は偽に成り得る。
+</pre>
+<p>具体的にはまりそうな例として、ある点が<a href="http://ja.wikipedia.org/wiki/%E3%83%9E%E3%83%B3%E3%83%87%E3%83%AB%E3%83%96%E3%83%AD%E9%9B%86%E5%90%88">マンデルブロ集合</a>に属さ<em>ない</em>ことを判定する次のプログラムを考える。</p>
+<pre>
+bool not_in_mandelbrot_set( double x, double y ) {
+    double re = 0.0, im = 0.0;
+    double re2, im2;
+    for( int i = 0; i &lt; N; ++i ) {
+        re2 = re * re;
+        im2 = im * im;
+        im = 2.0 * re * im + y;
+        re = re2 - im2 + x;
+    }
+    return re2 + im2 &gt; 4.0;
+}
+</pre>
+<p>この関数には <code>NaN</code> に関するバグがあって、発散する点でも多くの場合 <code>false</code> を返してくる。ループの途中で浮動小数点で表現できる最大値を超えてしまっても、 <code>Inf</code> になるだけで特に問題ないんじゃないの、と一瞬思ってしまうのだけど、それは間違い。</p>
+<pre>
+  re2, im2  が Inf
+→ re2 - im2 が NaN
+→ re2, im2  が NaN
+→ re2 + im2 &gt; 4.0 が偽
+</pre>
+<p>なので、最後の return は、</p>
+<pre>
+    return !(re2 + im2 &lt;= 4.0);
+</pre>
+<p>と書かないといけない。</p>
+
+<h2>コンパイラの最適化</h2>
+<p>浮動小数点数に関するコンパイラの最適化は、一見しょぼく見えることが多い。これはコンパイラが悪いのではなくて、浮動小数点数の性質によるもの。例えば、精度も含めて考えると、一般に浮動小数点数は結合則を満たさないので、</p>
+<pre>
+y = x + 3.0 + 4.0;
+</pre>
+<p>これは最適化されない。次のように書いておけば最適化される。</p>
+<pre>
+y = x + (3.0 + 4.0);
+</pre>
+<p>上述の NaN などの特殊な数も最適化を阻害する。その他</p>
+<pre>
+y = x + 0.0;
+</pre>
+<p>こんなのも <code>(-0) + (+0) = (+0)</code> なので最適化されない。</p>
+
+<h2>浮動小数点例外</h2>
+<p>実際問題として、結果が <code>NaN</code> や <code>Inf</code> になった時点で例外が飛んでくれた方が嬉しいときもある。どうも標準化された方法はないっぽいのだけれど、 UNIX で比較的ポータブルに使えそうな <code>feenableexcept()</code> という関数がある。</p>
+<pre>
+#define FE_INVALID
+#define FE_DENORMAL
+#define FE_DIVBYZERO
+#define FE_OVERFLOW
+#define FE_UNDERFLOW
+#define FE_INEXACT
+int feenableexcept( int );
+</pre>
+
+
+<p><a href="../">戻る</a></p>
+<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>
+

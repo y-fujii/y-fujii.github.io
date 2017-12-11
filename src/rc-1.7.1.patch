@@ -1,0 +1,980 @@
+diff -urN -urN rc-1.7.1.org/Makefile.am rc-1.7.1/Makefile.am
+--- rc-1.7.1.org/Makefile.am	2002-11-28 22:14:00.000000000 +0900
++++ rc-1.7.1/Makefile.am	2009-08-31 20:11:42.000000000 +0900
+@@ -56,10 +56,10 @@
+ # dependency expressed, since the distributed parse.[ch] (generated with
+ # byacc, and lightly edited to remove a couple of gcc warnings) are
+ # portable (I hope).
+-#parse.c parse.h: $(srcdir)/parse.y
+-#	$(YACC) -d $(srcdir)/parse.y
+-#	mv y.tab.c parse.c
+-#	mv y.tab.h parse.h
++parse.c parse.h: $(srcdir)/parse.y
++	$(YACC) -d $(srcdir)/parse.y
++	mv y.tab.c parse.c
++	mv y.tab.h parse.h
+ 
+ check: trip
+ 
+diff -urN -urN rc-1.7.1.org/acinclude.m4 rc-1.7.1/acinclude.m4
+--- rc-1.7.1.org/acinclude.m4	2002-11-28 01:28:15.000000000 +0900
++++ rc-1.7.1/acinclude.m4	2009-08-31 20:11:42.000000000 +0900
+@@ -1,6 +1,6 @@
+ dnl This macro sets HAVE_POSIX_GETGROUPS if the
+ dnl getgroups() function accepts a zero first argument.
+-AC_DEFUN(RC_FUNC_GETGROUPS, [
++AC_DEFUN([RC_FUNC_GETGROUPS], [
+ 	AC_CACHE_CHECK(for POSIX getgroups, rc_cv_func_posix_getgroups, AC_TRY_RUN([
+ #include <sys/types.h>
+ #include <unistd.h>
+@@ -16,7 +16,7 @@
+ 
+ dnl We can't use AC_CHECK_FUNCS for sigsetjmp(), since it's a macro in
+ dnl some places.
+-AC_DEFUN(RC_FUNC_SIGSETJMP, [
++AC_DEFUN([RC_FUNC_SIGSETJMP], [
+ 	AC_CACHE_CHECK(for sigsetjmp, rc_cv_sigsetjmp,
+ 		AC_TRY_LINK([
+ #include <setjmp.h>
+@@ -30,7 +30,7 @@
+ ])
+ 
+ dnl Similarly, AC_CHECK_FUNCS doesn't find strerror() on NetBSD.
+-AC_DEFUN(RC_FUNC_STRERROR, [
++AC_DEFUN([RC_FUNC_STRERROR], [
+ 	AC_CACHE_CHECK(for strerror, rc_cv_strerror,
+ 		AC_TRY_LINK([
+ #include <string.h>
+@@ -43,7 +43,7 @@
+ ])
+ 
+ dnl HPUX needs _KERNEL defined to pick up RLIMIT_foo defines.  (Why?)
+-AC_DEFUN(RC_NEED_KERNEL, [
++AC_DEFUN([RC_NEED_KERNEL], [
+ 	AC_CACHE_CHECK(if _KERNEL is required for RLIMIT defines, rc_cv_kernel_rlimit,
+ 		AC_TRY_COMPILE([
+ #include <sys/types.h>
+@@ -66,7 +66,7 @@
+ ])
+ 
+ dnl Look for rlim_t in sys/types.h and sys/resource.h
+-AC_DEFUN(RC_TYPE_RLIM_T, [
++AC_DEFUN([RC_TYPE_RLIM_T], [
+ 	AC_CACHE_CHECK(for rlim_t, rc_cv_have_rlim_t,
+ 		AC_EGREP_CPP(rlim_t, [
+ #include <sys/types.h>
+@@ -118,7 +118,7 @@
+ 
+ 
+ dnl Check type of sig_atomic_t.
+-AC_DEFUN(RC_TYPE_SIG_ATOMIC_T, [
++AC_DEFUN([RC_TYPE_SIG_ATOMIC_T], [
+ 	AC_CACHE_CHECK(for sig_atomic_t, rc_cv_sig_atomic_t,
+ 		AC_EGREP_HEADER(sig_atomic_t, signal.h,
+ 			rc_cv_sig_atomic_t=yes, rc_cv_sig_atomic_t=no))
+@@ -135,7 +135,7 @@
+ dnl exit(), wait() returns with the PID of the child as normal.  (Real
+ dnl SysV waits for all children to exit, then returns with ECHILD.)
+ dnl Anyway, this is why the `sleep(1)' is there.
+-AC_DEFUN(RC_SYS_V_SIGCLD, [
++AC_DEFUN([RC_SYS_V_SIGCLD], [
+ 	AC_CACHE_CHECK(for SysV SIGCLD semantics, rc_cv_sysv_sigcld,
+ 		AC_TRY_RUN([
+ #include <errno.h>
+@@ -165,7 +165,7 @@
+ 
+ 
+ dnl Do we have /dev/fd or /proc/self/fd?
+-AC_DEFUN(RC_SYS_DEV_FD, [
++AC_DEFUN([RC_SYS_DEV_FD], [
+ 	AC_CACHE_CHECK(for /dev/fd, rc_cv_sys_dev_fd,
+ 		if test -d /dev/fd && test -r /dev/fd/0; then
+ 			rc_cv_sys_dev_fd=yes
+@@ -179,7 +179,7 @@
+ 
+ 
+ dnl Can mknod make FIFOs?
+-AC_DEFUN(RC_SYS_MKNOD_FIFO, [
++AC_DEFUN([RC_SYS_MKNOD_FIFO], [
+ 	AC_CACHE_CHECK(for mknod FIFOs, rc_cv_sys_fifo,
+ 		AC_TRY_RUN([
+ #include <sys/types.h>
+@@ -196,7 +196,7 @@
+ ])
+ 
+ dnl Where is tgetent()?
+-AC_DEFUN(RC_LIB_TGETENT, [
++AC_DEFUN([RC_LIB_TGETENT], [
+ 	AC_CHECK_LIB(termcap, tgetent,
+ 		rc_lib_tgetent=-ltermcap,
+ 		AC_CHECK_LIB(ncurses, tgetent,
+diff -urN -urN rc-1.7.1.org/configure.ac rc-1.7.1/configure.ac
+--- rc-1.7.1.org/configure.ac	2003-07-17 21:22:35.000000000 +0900
++++ rc-1.7.1/configure.ac	2009-08-31 20:11:42.000000000 +0900
+@@ -21,7 +21,7 @@
+ dnl -Wmissing-prototypes', and checked that all the warnings generated
+ dnl are harmless.
+ case "$GCC" in
+-yes) CFLAGS="-Wall $CFLAGS" ;;
++yes) CFLAGS="-std=c99 -pedantic -Wall -Wextra -Wno-unused-parameter $CFLAGS" ;;
+ esac
+ 
+ AC_SYS_LARGEFILE
+@@ -172,25 +172,17 @@
+ 
+ AC_ARG_WITH(editline, [  --with-editline         Simmule Turner's line editing],
+ 	AC_CHECK_LIB(edit, readline,
+-		AC_DEFINE(EDITLINE, 1, [Define to 1 if you are using `editline' or `vrl'.]) LIBS="$LIBS -ledit",
++		AC_DEFINE(EDITLINE, 1, [Define to 1 if you are using `editline'.]) LIBS="$LIBS -ledit",
+ 		AC_MSG_ERROR(editline library not found)))
+ 
+-if test "${with_vrl+set}" = set -o "${with_readline+set}" = set; then
++if test "${with_readline+set}" = set; then
+ 	RC_LIB_TGETENT
+ fi
+ 
+-AC_ARG_WITH(vrl, [  --with-vrl              Gert-Jan Vons's line editing],
+-	AC_CHECK_LIB(vrl, readline,
+-		AC_DEFINE(EDITLINE) LIBS="$LIBS -lvrl $rc_lib_tgetent",
+-		AC_MSG_ERROR(vrl library not found), $rc_lib_tgetent))
+-
+-dnl There are (at least) two incompatible versions of readline, and we
+-dnl need to know which one we are using.  We don't support readline 2.0.
+ AC_ARG_WITH(readline, [  --with-readline         Bloated GNU line editing], [
+ 	AC_CHECK_LIB(readline, readline, [
+ 		AC_DEFINE(READLINE, 1, [Define to 1 if you are using GNU `readline'.])
+ 		LIBS="$LIBS -lreadline $rc_lib_tgetent"
+-		AC_CHECK_LIB(readline, _rl_clean_up_for_exit, , AC_DEFINE(READLINE_OLD, 1, [Define to 1 for older versions GNU `readline'.]), $rc_lib_tgetent)
+ 	], AC_MSG_ERROR(readline library not found), $rc_lib_tgetent)
+ ])
+ AM_CONDITIONAL(AMC_READLINE, test "${with_readline+set}" = set)
+diff -urN -urN rc-1.7.1.org/footobar.c rc-1.7.1/footobar.c
+--- rc-1.7.1.org/footobar.c	2001-10-12 18:10:27.000000000 +0900
++++ rc-1.7.1/footobar.c	2009-08-31 20:11:42.000000000 +0900
+@@ -13,7 +13,7 @@
+ 	int c;
+ 
+ 	while ((c = *s++) != '\0')
+-		if (dnw[c] || c == '*' || (c == '_' && *s == '_'))
++		if (!varChar(c) || c == '*' || (c == '_' && *s == '_'))
+ 			fmtprint(f, "__%02x", c);
+ 		else
+ 			fmtputc(f, c);
+@@ -72,6 +72,7 @@
+ 	case nWhile:	fmtprint(f, "while(%T)%T", n->u[0].p, n->u[1].p);	break;
+ 	case nForin:	fmtprint(f, "for(%T in %T)%T", n->u[0].p, n->u[1].p, n->u[2].p); break;
+ 	case nVarsub:	fmtprint(f, "$%T(%T)", n->u[0].p, n->u[1].p);		break;
++	case nVarslice:	fmtprint(f, "$%T(%T;%T)", n->u[0].p, n->u[1].p, n->u[2].p);		break;
+ 	case nWord:
+ 		fmtprint(f, quotep(n->u[0].s, dollar) ? "%#S" : "%S", n->u[0].s);
+ 		break;
+@@ -339,7 +340,7 @@
+ 	return FALSE;
+ }
+ 
+-#define	ISMETA(c)	(c == '*' || c == '?' || c == '[')
++#define	ISMETA(c)	(c == '*' || c == '?' || c == '[' || c == '~')
+ 
+ static bool Sconv(Format *f, int ignore) {
+ 	int c;
+@@ -352,7 +353,7 @@
+ 	}
+ 	if (!quoted) {
+ 		while ((c = *t++) != '\0')
+-			if (nw[c] == 1 || (metaquote && ISMETA(c)))
++			if (!wordChar(c) || (metaquote && ISMETA(c)))
+ 				goto quoteit;
+ 		fmtprint(f, "%s", s);
+ 		return FALSE;
+diff -urN -urN rc-1.7.1.org/glob.c rc-1.7.1/glob.c
+--- rc-1.7.1.org/glob.c	2002-07-25 21:05:33.000000000 +0900
++++ rc-1.7.1/glob.c	2009-08-31 20:11:42.000000000 +0900
+@@ -110,7 +110,7 @@
+ 		if (lstat(path, &s) < 0)
+ 			return NULL;
+ 		r = nnew(List);
+-		r->w = ncpy(p);
++		r->w = p;
+ 		r->m = NULL;
+ 		r->n = NULL;
+ 		return r;
+@@ -145,23 +145,19 @@
+ /*
+    lglob() globs a pattern agains a list of directory roots. e.g., (/tmp /usr /bin) "*"
+    will return a list with all the files in /tmp, /usr, and /bin. NULL on no match.
+-   slashcount indicates the number of slashes to stick between the directory and the
++   nslash indicates the number of slashes to stick between the directory and the
+    matched name. e.g., for matching ////tmp/////foo*
+ */
+ 
+-static List *lglob(List *s, char *p, char *m, size_t slashcount) {
++static List *lglob(List *s, char *p, char *m, size_t nslash) {
+ 	List *q, *r, *top, foo;
+-	static struct {
+-		List l;
+-		size_t size;
+-	} slash;
+-	if (slashcount+1 > slash.size) {
+-		slash.size = 2*(slashcount+1);
+-		slash.l.w = erealloc(slash.l.w, slash.size);
+-	}
+-	slash.l.w[slashcount] = '\0';
+-	while (slashcount > 0)
+-		slash.l.w[--slashcount] = '/';
++	List slash;
++	slash.w = ealloc(nslash + 1);
++	slash.w[nslash] = '\0';
++	slash.m = NULL;
++	slash.n = NULL;
++	while (nslash > 0)
++		slash.w[--nslash] = '/';
+ 	for (top = r = NULL; s != NULL; s = s->n) {
+ 		q = dmatch(s->w, p, m);
+ 		if (q != NULL) {
+@@ -169,7 +165,7 @@
+ 			foo.m = NULL;
+ 			foo.n = NULL;
+ 			if (!(s->w[0] == '/' && s->w[1] == '\0')) /* need to separate */
+-				q = concat(&slash.l, q);	  /* dir/name with slash */
++				q = concat(&slash, q);	  /* dir/name with slash */
+ 			q = concat(&foo, q);
+ 			if (r == NULL)
+ 				top = r = q;
+@@ -179,6 +175,7 @@
+ 				r = r->n;
+ 		}
+ 	}
++	efree(slash.w);
+ 	return top;
+ }
+ 
+@@ -188,63 +185,59 @@
+ */
+ 
+ static List *doglob(char *w, char *m) {
+-	static char *dir = NULL, *pattern = NULL, *metadir = NULL, *metapattern = NULL;
+-	static size_t dsize = 0;
+-	char *d, *p, *md, *mp;
+-	size_t psize;
++	size_t size = strlen(w) + 1;
+ 	char *s = w;
+-	List firstdir;
+-	List *matched;
+-	if ((psize = strlen(w) + 1) > dsize || dir == NULL) {
+-		efree(dir); efree(pattern); efree(metadir); efree(metapattern);
+-		dir = ealloc(psize);
+-		pattern = ealloc(psize);
+-		metadir = ealloc(psize);
+-		metapattern = ealloc(psize);
+-		dsize = psize;
+-	}
+-	d = dir;
+-	p = pattern;
+-	md = metadir;
+-	mp = metapattern;
++
++	/* get first directory component */
++	char *dir = nalloc(size);
++	char *metadir = nalloc(size);
++	char *d = dir;
++	char *md = metadir;
+ 	while (*s != '/' && *s != '\0') {
+-		*d++ = *s++; /* get first directory component */
++		*d++ = *s++;
+ 		*md++ = *m++;
+ 	}
+ 	*d = '\0';
+-	/*
+-	   Special case: no slashes in the pattern, i.e., open the current directory.
+-	   Remember that w cannot consist of slashes alone (the other way *s could be
+-	   zero) since doglob gets called iff there's a metacharacter to be matched
+-	*/
+-	if (*s == '\0') {
+-		matched = dmatch(".", dir, metadir);
+-		goto end;
+-	}
++
++	List *matched;
+ 	if (*w == '/') {
+-		firstdir.w = dir;
+-		firstdir.m = metadir;
+-		firstdir.n = NULL;
+-		matched = &firstdir;
+-	} else {
+-		/*
+-		   we must glob against current directory,
+-		   since the first character is not a slash.
+-		*/
++		matched = nnew(List);
++		matched->w = dir;
++		matched->m = metadir;
++		matched->n = NULL;
++	}
++	else if (streq(dir, "~")) {
++		matched = varlookup("HOME");
++	}
++	else {
+ 		matched = dmatch(".", dir, metadir);
+ 	}
+-	do {
+-		size_t slashcount;
++
++	while (*s != '\0') {
+ 		sigchk();
+-		for (slashcount = 0; *s == '/'; s++, m++)
+-			slashcount++; /* skip slashes */
+-		while (*s != '/' && *s != '\0')
+-			*p++ = *s++, *mp++ = *m++; /* get pattern */
++
++		/* skip slashes */
++		size_t nslash = 0;
++		while (*s == '/') {
++			nslash++;
++			s++, m++;
++		}
++
++		/* get pattern */
++		char *pattern = nalloc(size);
++		char *metapattern = nalloc(size);
++		char *p = pattern;
++		char *mp = metapattern;
++		while (*s != '/' && *s != '\0') {
++			*p++ = *s++;
++			*mp++ = *m++;
++		}
+ 		*p = '\0';
+-		matched = lglob(matched, pattern, metapattern, slashcount);
+-		p = pattern, mp = metapattern;
+-	} while (*s != '\0');
+-end:	if (matched == NULL) {
++
++		matched = lglob(matched, pattern, metapattern, nslash);
++	}
++
++	if (matched == NULL) {
+ 		matched = nnew(List);
+ 		matched->w = w;
+ 		matched->m = NULL;
+diff -urN -urN rc-1.7.1.org/glom.c rc-1.7.1/glom.c
+--- rc-1.7.1.org/glom.c	2001-10-02 18:20:57.000000000 +0900
++++ rc-1.7.1/glom.c	2009-08-31 20:11:42.000000000 +0900
+@@ -2,6 +2,7 @@
+ 
+ #include "rc.h"
+ 
++#include <stdio.h>
+ #include <sys/stat.h>
+ #include <signal.h>
+ #include <errno.h>
+@@ -86,28 +87,71 @@
+ 	return top;
+ }
+ 
+-extern List *varsub(List *var, List *subs) {
+-	List *r, *top;
+-	int n = listnel(var);
+-	for (top = r = NULL; subs != NULL; subs = subs->n) {
+-		int i = a2u(subs->w);
+-		if (i < 1)
++extern List *varsub(List *var_top, List *sub_top) {
++	int nvar = listnel(var_top);
++	List *dst_top = nnew(List);
++	List *dst = dst_top;
++	for (List *sub = sub_top; sub != NULL; sub = sub->n) {
++		int isub;
++		if (sscanf(sub->w, "%d", &isub) == 0) {
+ 			rc_error("bad subscript");
+-		if (i <= n) {
+-			List *sub = var;
+-			while (--i)
+-				sub = sub->n; /* loop until sub == var(i) */
+-			if (top == NULL)
+-				top = r = nnew(List);
+-			else
+-				r = r->n = nnew(List);
+-			r->w = sub->w;
+-			r->m = sub->m;
+ 		}
++		isub = (isub - 1) % nvar + 1 + (isub < 1 ? nvar : 0);
++
++		List *var = var_top;
++		for(int i = 1; i < isub; ++i) {
++			var = var->n;
++		}
++		dst = dst->n = nnew(List);
++		dst->w = var->w;
++		dst->m = var->m;
+ 	}
+-	if (top != NULL)
+-		r->n = NULL;
+-	return top;
++	dst->n = NULL;
++	return dst_top->n;
++}
++
++extern List *varslice(List *var, List *lbgn, List *lend) {
++	if (listnel(lbgn) != 1 || listnel(lend) != 1) {
++		rc_error("bad slice");
++	}
++
++	int bgn, end;
++	if (sscanf(lbgn->w, "%d", &bgn) == 0) {
++		rc_error("bad slice");
++	}
++	if (sscanf(lend->w, "%d", &end) == 0) {
++		rc_error("bad slice");
++	}
++	int nvar = listnel(var);
++	bgn = (bgn - 1) % nvar + 1 + (bgn < 1 ? nvar : 0);
++	end = (end - 1) % nvar + 1 + (end < 1 ? nvar : 0);
++
++	// XXX: this may be changed.
++	if (end < bgn) {
++		rc_error("bad slice");
++	}
++
++	int i = 1;
++	while (i < bgn) {
++		var = var->n;
++		++i;
++	}
++	List *dst_top = nnew(List);
++	List *dst = dst_top;
++	dst->w = var->w;
++	dst->m = var->m;
++	var = var->n;
++	++i;
++	while (i <= end) {
++		dst = dst->n = nnew(List);
++		dst->w = var->w;
++		dst->m = var->m;
++		var = var->n;
++		++i;
++	}
++	dst->n = NULL;
++
++	return dst_top;
+ }
+ 
+ extern List *flatten(List *s) {
+@@ -434,6 +478,8 @@
+ 			return v;
+ 		case nVarsub:
+ 			return varsub(v, glom(n->u[1].p));
++		case nVarslice:
++			return varslice(v, glom(n->u[1].p), glom(n->u[2].p));
+ 		}
+ 	}
+ }
+diff -urN -urN rc-1.7.1.org/hash.c rc-1.7.1/hash.c
+--- rc-1.7.1.org/hash.c	2002-08-15 21:51:42.000000000 +0900
++++ rc-1.7.1/hash.c	2009-08-31 20:11:42.000000000 +0900
+@@ -230,36 +230,14 @@
+ 
+ static char *neverexport[] = {
+ 	"apid", "apids", "bqstatus", "cdpath", "home",
+-	"ifs", "path", "pid", "status", "*"
++	"ifs", "path", "pid", "status", "version", "*",
+ };
+ 
+-/* for a few variables that have default values, we export them only
+-if they've been explicitly set; maybeexport[n].flag is TRUE if this
+-has occurred. */
+-struct nameflag {
+-	char *name;
+-	bool flag;
+-};
+-static struct nameflag maybeexport[] = {
+-	{ "prompt", FALSE },
+-	{ "version", FALSE }
+-};
+-
+-void set_exportable(char *s, bool b) {
+-	int i;
+-	for (i = 0; i < arraysize(maybeexport); ++i)
+-		if (maybeexport[i].flag != b && streq(s, maybeexport[i].name))
+-			maybeexport[i].flag = b;
+-}
+-
+ static bool var_exportable(char *s) {
+ 	int i;
+ 	for (i = 0; i < arraysize(neverexport); i++)
+ 		if (streq(s, neverexport[i]))
+ 			return FALSE;
+-	for (i = 0; i < arraysize(maybeexport); i++)
+-		if (maybeexport[i].flag == FALSE && streq(s, maybeexport[i].name))
+-			return FALSE;
+ 	return TRUE;
+ }
+ 
+diff -urN -urN rc-1.7.1.org/heredoc.c rc-1.7.1/heredoc.c
+--- rc-1.7.1.org/heredoc.c	2001-10-01 21:21:10.000000000 +0900
++++ rc-1.7.1/heredoc.c	2009-08-31 20:11:42.000000000 +0900
+@@ -95,7 +95,7 @@
+ 				size_t len = 0;
+ 				do
+ 					len++;
+-				while (!dnw[c = *(unsigned char *) s++]);
++				while (wordChar(c = *(unsigned char *) s++));
+ 				if (c == '^')
+ 					c = *s;
+ 				else
+diff -urN -urN rc-1.7.1.org/input.c rc-1.7.1/input.c
+--- rc-1.7.1.org/input.c	2002-07-31 21:25:59.000000000 +0900
++++ rc-1.7.1/input.c	2009-08-31 20:11:42.000000000 +0900
+@@ -21,7 +21,6 @@
+ 
+ #define BUFSIZE ((size_t) 256)
+ 
+-static char *prompt2;
+ bool rcrc;
+ 
+ static int dead(void);
+@@ -271,26 +270,20 @@
+ 			b_dot(fname);
+ 		}
+ 		if (interactive) {
+-			List *s;
++			char *pr;
+ 			if (!dashen && fnlookup("prompt") != NULL) {
+-				static bool died = FALSE;
+-				static char *arglist[] = { "prompt", NULL };
+-
+-				if (!died) {
+-					died = TRUE;
+-					funcall(arglist);
+-				}
+-				died = FALSE;
++				Node* node = mk(nBackq, NULL, mk(nWord, "prompt", NULL, FALSE));
++				pr = glom(node)->w;
++			}
++			else {
++				pr = "; ";
+ 			}
+-			if ((s = varlookup("prompt")) != NULL) {
+ #if EDITLINE || READLINE
+-				if (istack->t == iFd && isatty(istack->fd))
+-					prompt = s->w;
+-				else
++			if (istack->t == iFd && isatty(istack->fd))
++				prompt = pr;
++			else
+ #endif
+-					fprint(2, "%s", s->w);
+-				prompt2 = (s->n == NULL ? "" : s->n->w);
+-			}
++				fprint(2, pr);
+ 		}
+ 		inityy();
+ 		if (yyparse() == 1 && execit)
+@@ -372,9 +365,9 @@
+ 	if (interactive) {
+ #if EDITLINE || READLINE
+ 		if (istack->t == iFd && isatty(istack->fd))
+-			prompt = prompt2;
++			prompt = "; ";
+ 		else
+ #endif
+-			fprint(2, "%s", prompt2);
++			fprint(2, "; ");
+ 	}
+ }
+diff -urN -urN rc-1.7.1.org/lex.c rc-1.7.1/lex.c
+--- rc-1.7.1.org/lex.c	2001-10-12 19:21:05.000000000 +0900
++++ rc-1.7.1/lex.c	2009-08-31 20:11:42.000000000 +0900
+@@ -2,6 +2,7 @@
+ 
+ #include "rc.h"
+ #include "parse.h"
++#include <ctype.h>
+ 
+ /*
+ 	Special characters (i.e., "non-word") in rc:
+@@ -33,27 +34,23 @@
+ 
+ int lineno;
+ 
+-const char nw[] = {
+-	1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0,
+-	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+-	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+-};
++int wordChar(unsigned char c) {
++	switch (c) {
++		case '\0': case ' ' : case '\t': case '\n':
++		case '#' : case ';' : case '&' : case '|' :
++		case '^' : case '$' : case '=' : case '`' :
++		case '\'': case '{' : case '}' : case '@' :
++		case '!' : case '(' : case ')' : case '<' :
++		case '>' : case '\\':
++			return 0;
++		default:
++			return 1;
++	}
++}
+ 
+-const char dnw[] = {
+-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+-	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0,
+-	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+-};
++int varChar(unsigned char c) {
++	return isalnum(c) || c == '_' || c == '*';
++}
+ 
+ static size_t bufsize = BUFSIZE;
+ static char *realbuf = NULL;
+@@ -72,11 +69,9 @@
+ /* does this string require quoting? */
+ extern bool quotep(char *s, bool dollar) {
+ 	unsigned char c;
+-	const char *meta;
+-
+-	meta = dollar ? dnw : nw;
++	int (*nonMeta)(unsigned char) = dollar ? varChar : wordChar;
+ 	while ((c = *s++))
+-		if (meta[c])
++		if (!nonMeta(c))
+ 			return TRUE;
+ 	return FALSE;
+ }
+@@ -86,7 +81,6 @@
+ 	bool saw_meta = FALSE;
+ 	int c;
+ 	size_t i;			/* The purpose of all these local assignments is to	*/
+-	const char *meta;		/* allow optimizing compilers like gcc to load these	*/
+ 	char *buf = realbuf;		/* values into registers. On a sparc this is a		*/
+ 	YYSTYPE *y = &yylval;		/* win, in code size *and* execution time		*/
+ 	if (errset) {
+@@ -94,7 +88,7 @@
+ 		return '\n';
+ 	}
+ 	/* rc variable-names may contain only alnum, '*' and '_', so use dnw if we are scanning one. */
+-	meta = (dollar ? dnw : nw);
++	int (*nonMeta)(unsigned char) = (dollar ? varChar : wordChar);
+ 	dollar = FALSE;
+ 	if (newline) {
+ 		--lineno; /* slight space optimization; print_prompt2() always increments lineno */
+@@ -105,28 +99,30 @@
+ 		w = NW;
+ 	if (c == EOF)
+ 		return END;
+-	if (!meta[(unsigned char) c]) {	/* it's a word or keyword. */
++	if (nonMeta(c)) {	/* it's a word or keyword. */
+ 		checkfreecaret;
+ 		w = RW;
+ 		i = 0;
++		if (c == '~')
++			saw_meta = TRUE;
+ 	read:	do {
+ 			buf[i++] = c;
+ 			if (c == '?' || c == '[' || c == '*')
+ 				saw_meta = TRUE;
+ 			if (i >= bufsize)
+ 				buf = realbuf = erealloc(buf, bufsize *= 2);
+-		} while ((c = gchar()) != EOF && !meta[(unsigned char) c]);
++		} while ((c = gchar()) != EOF && nonMeta(c));
+ 		while (c == '\\') {
+ 			if ((c = gchar()) == '\n') {
+ 				print_prompt2();
+ 				c = ' '; /* Pretend a space was read */
+ 				break;
+ 			} else {
+-	bs:			if (meta != dnw) { /* all words but varnames may have a bslash */
++	bs:			if (nonMeta == wordChar) { /* all words but varnames may have a bslash */
+ 					buf[i++] = '\\';
+ 					if (i >= bufsize)
+ 						buf = realbuf = erealloc(buf, bufsize *= 2);
+-					if (!meta[(unsigned char) c])
++					if (nonMeta(c))
+ 						goto read;
+ 				} else {
+ 					ugchar(c);
+@@ -138,11 +134,10 @@
+ 		ugchar(c);
+ 		buf[i] = '\0';
+ 		w = KW;
+-		if (i == 2) {
+-			if (*buf == 'i' && buf[1] == 'f') return IF;
+-			if (*buf == 'f' && buf[1] == 'n') return FN;
+-			if (*buf == 'i' && buf[1] == 'n') return IN;
+-		}
++		if (streq(buf, "~")) return '~';
++		if (streq(buf, "if")) return IF;
++		if (streq(buf, "fn")) return FN;
++		if (streq(buf, "in")) return IN;
+ 		if (streq(buf, "for")) return FOR;
+ 		if (streq(buf, "else")) return ELSE;
+ 		if (streq(buf, "switch")) return SWITCH;
+@@ -162,24 +157,16 @@
+ 		y->word.q = FALSE;
+ 		return WORD;
+ 	}
+-	if (c == '`' || c == '!' || c == '@' || c == '~' || c == '$' || c == '\'') {
++	if (c == '`' || c == '!' || c == '@' || c == '$' || c == '\'') {
+ 		checkfreecaret;
+-		if (c == '!' || c == '@' || c == '~')
++		if (c == '!' || c == '@')
+ 			w = KW;
+ 	}
+ 	switch (c) {
+ 	case '!':
+-		return BANG;
+ 	case '@':
+-		return SUBSHELL;
+-	case '~':
+-		return TWIDDLE;
+ 	case '`':
+-		c = gchar();
+-		if (c == '`')
+-			return BACKBACK;
+-		ugchar(c);
+-		return '`';
++		return c;
+ 	case '$':
+ 		dollar = TRUE;
+ 		c = gchar();
+diff -urN -urN rc-1.7.1.org/main.c rc-1.7.1/main.c
+--- rc-1.7.1.org/main.c	2002-04-04 17:48:02.000000000 +0900
++++ rc-1.7.1/main.c	2009-08-31 20:11:42.000000000 +0900
+@@ -79,7 +79,6 @@
+ 	assigndefault("path", DEFAULTPATH, (void *)0);
+ #endif
+ 	assigndefault("pid", nprint("%d", rc_pid), (void *)0);
+-	assigndefault("prompt", "; ", "", (void *)0);
+ 	assigndefault("version", VERSION, "$Release: @(#)" PACKAGE " " VERSION " " RELDATE " $", (void *)0);
+ 	initenv(envp);
+ 	initinput();
+@@ -113,7 +112,6 @@
+ 	for (l = NULL; (v = va_arg(ap, char *)) != NULL;)
+ 		l = append(l, word(v, NULL));
+ 	varassign(name, l, FALSE);
+-	set_exportable(name, FALSE);
+ 	if (streq(name, "path"))
+ 		alias(name, l, FALSE);
+ 	va_end(ap);
+diff -urN -urN rc-1.7.1.org/parse.y rc-1.7.1/parse.y
+--- rc-1.7.1.org/parse.y	2001-11-01 20:35:22.000000000 +0900
++++ rc-1.7.1/parse.y	2009-08-31 20:11:42.000000000 +0900
+@@ -13,12 +13,12 @@
+ Node *parsetree;	/* not using yylval because bison declares it as an auto */
+ %}
+ 
+-%token ANDAND BACKBACK BANG CASE COUNT DUP ELSE END FLAT FN FOR IF IN
+-%token OROR PIPE REDIR SREDIR SUB SUBSHELL SWITCH TWIDDLE WHILE WORD HUH
++%token ANDAND CASE COUNT DUP ELSE END FLAT FN FOR IF IN
++%token OROR PIPE REDIR SREDIR SUB SWITCH WHILE WORD HUH
+ 
+ %left WHILE ')' ELSE
+ %left ANDAND OROR '\n'
+-%left BANG SUBSHELL
++%left '!' '@'
+ %left PIPE
+ %right '$' 
+ %left SUB
+@@ -31,14 +31,12 @@
+ 	struct Pipe pipe;
+ 	struct Dup dup;
+ 	struct Word word;
+-	char *keyword;
+ }
+ 
+ %type <redir> REDIR SREDIR
+ %type <pipe> PIPE
+ %type <dup> DUP
+ %type <word> WORD
+-%type <keyword> keyword
+ %type <node> assign body brace case cbody cmd cmdsa cmdsan comword epilog
+ 	     first line nlwords paren redir sword simple iftail word words
+ 
+@@ -104,14 +102,14 @@
+ 	| FOR '(' word ')' optnl cmd		{ $$ = mk(nForin,$3,star,$6); }
+ 	| WHILE paren optnl cmd			{ $$ = mk(nWhile,$2,$4); }
+ 	| SWITCH '(' word ')' optnl '{' cbody '}' { $$ = mk(nSwitch,$3,$7); }
+-	| TWIDDLE optcaret word words		{ $$ = mk(nMatch,$3,$4); }
++	| '~' optcaret word words		{ $$ = mk(nMatch,$3,$4); }
+ 	| cmd ANDAND optnl cmd			{ $$ = mk(nAndalso,$1,$4); }
+ 	| cmd OROR optnl cmd			{ $$ = mk(nOrelse,$1,$4); }
+  	| cmd PIPE optnl cmd			{ $$ = mk(nPipe,$2.left,$2.right,$1,$4); }
+-	| redir cmd	%prec BANG		{ $$ = ($2 != NULL ? mk(nPre,$1,$2) : $1); }
+-	| assign cmd	%prec BANG		{ $$ = ($2 != NULL ? mk(nPre,$1,$2) : $1); }
+-	| BANG optcaret cmd			{ $$ = mk(nBang,$3); }
+-	| SUBSHELL optcaret cmd			{ $$ = mk(nSubshell,$3); }
++	| redir cmd	%prec '!'		{ $$ = ($2 != NULL ? mk(nPre,$1,$2) : $1); }
++	| assign cmd	%prec '!'		{ $$ = ($2 != NULL ? mk(nPre,$1,$2) : $1); }
++	| '!' optcaret cmd			{ $$ = mk(nBang,$3); }
++	| '@' optcaret cmd			{ $$ = mk(nSubshell,$3); }
+ 	| FN words brace			{ $$ = mk(nNewfn,$2,$3); }
+ 	| FN words				{ $$ = mk(nRmfn,$2); }
+ 
+@@ -126,34 +124,33 @@
+ 	| first '^' sword		{ $$ = mk(nConcat,$1,$3); }
+ 
+ sword	: comword
+-	| keyword			{ $$ = mk(nWord, $1, NULL, FALSE); }
++	| FOR		{ $$ = mk(nWord, "for", NULL, FALSE); }
++	| IN		{ $$ = mk(nWord, "in", NULL, FALSE); }
++	| WHILE		{ $$ = mk(nWord, "while", NULL, FALSE); }
++	| IF		{ $$ = mk(nWord, "if", NULL, FALSE); }
++	| SWITCH	{ $$ = mk(nWord, "switch", NULL, FALSE); }
++	| FN		{ $$ = mk(nWord, "fn", NULL, FALSE); }
++	| ELSE		{ $$ = mk(nWord, "else", NULL, FALSE); }
++	| CASE		{ $$ = mk(nWord, "case", NULL, FALSE); }
++	| '~'		{ $$ = mk(nWord, "~", "\x00", FALSE); }
++	| '!'		{ $$ = mk(nWord, "!", NULL, FALSE); }
++	| '@'		{ $$ = mk(nWord, "@", NULL, FALSE); }
+ 
+ word	: sword
+ 	| word '^' sword		{ $$ = mk(nConcat,$1,$3); }
+ 
+ comword	: '$' sword			{ $$ = mk(nVar,$2); }
+ 	| '$' sword SUB words ')'	{ $$ = mk(nVarsub,$2,$4); }
++	| '$' sword SUB words ';' words ')'
++					{ $$ = mk(nVarslice,$2,$4,$6); }
+ 	| COUNT sword			{ $$ = mk(nCount,$2); }
+ 	| FLAT sword			{ $$ = mk(nFlat, $2); }
+-	| '`' sword			{ $$ = mk(nBackq,nolist,$2); }
+ 	| '`' brace			{ $$ = mk(nBackq,nolist,$2); }
+-	| BACKBACK word	brace		{ $$ = mk(nBackq,$2,$3); }
+-	| BACKBACK word	sword		{ $$ = mk(nBackq,$2,$3); }
++	| '`' word brace		{ $$ = mk(nBackq,$2,$3); }
+ 	| '(' nlwords ')'		{ $$ = $2; }
+ 	| REDIR brace			{ $$ = mk(nNmpipe,$1.type,$1.fd,$2); }
+ 	| WORD				{ $$ = mk(nWord, $1.w, $1.m, $1.q); }
+ 
+-keyword	: FOR		{ $$ = "for"; }
+-	| IN		{ $$ = "in"; }
+-	| WHILE		{ $$ = "while"; }
+-	| IF		{ $$ = "if"; }
+-	| SWITCH	{ $$ = "switch"; }
+-	| FN		{ $$ = "fn"; }
+-	| ELSE		{ $$ = "else"; }
+-	| CASE		{ $$ = "case"; }
+-	| TWIDDLE	{ $$ = "~"; }
+-	| BANG		{ $$ = "!"; }
+-	| SUBSHELL	{ $$ = "@"; }
+ 
+ words	:		{ $$ = NULL; }
+ 	| words word	{ $$ = ($1 != NULL ? ($2 != NULL ? mk(nLappend,$1,$2) : $1) : $2); }
+diff -urN -urN rc-1.7.1.org/rc.h rc-1.7.1/rc.h
+--- rc-1.7.1.org/rc.h	2002-08-21 00:59:36.000000000 +0900
++++ rc-1.7.1/rc.h	2009-08-31 20:11:42.000000000 +0900
+@@ -35,7 +35,8 @@
+ 	nAndalso, nAssign, nBackq, nBang, nBody, nCbody, nNowait, nBrace,
+ 	nConcat, nCount, nElse, nFlat, nDup, nEpilog, nNewfn, nForin, nIf,
+ 	nOrelse, nPipe, nPre, nRedir, nRmfn, nArgs, nSubshell, nCase,
+-	nSwitch, nMatch, nVar, nVarsub, nWhile, nWord, nLappend, nNmpipe
++	nSwitch, nMatch, nVar, nVarsub, nWhile, nWord, nLappend, nNmpipe,
++	nVarslice,
+ } nodetype;
+ 
+ typedef enum ecodes {
+@@ -288,7 +289,8 @@
+ extern void inityy(void);
+ extern void yyerror(const char *);
+ extern void scanerror(char *);
+-extern const char nw[], dnw[];
++extern int wordChar(unsigned char);
++extern int varChar(unsigned char);
+ 
+ /* list.c */
+ extern void listfree(List *);
+@@ -356,13 +358,8 @@
+ extern int rl_pending_input;
+ extern int rl_reset_terminal(char *);
+ 
+-#if READLINE_OLD
+-extern void rl_clean_up_for_exit(void);
+-extern void rl_deprep_terminal(void);
+-#else
+ extern void _rl_clean_up_for_exit(void);
+ extern void (*rl_deprep_term_function)(void);
+-#endif
+ 
+ extern char *rc_readline(char *);
+ 
+diff -urN -urN rc-1.7.1.org/readline.c rc-1.7.1/readline.c
+--- rc-1.7.1.org/readline.c	2002-02-08 23:42:28.000000000 +0900
++++ rc-1.7.1/readline.c	2009-08-31 20:11:42.000000000 +0900
+@@ -25,13 +25,8 @@
+ 		/* Readline interrupted.  Clear up the terminal settings. */
+ 		switch (s) {
+ 		default:
+-#if READLINE_OLD
+-			rl_clean_up_for_exit();
+-			rl_deprep_terminal();
+-#else
+ 			_rl_clean_up_for_exit();
+ 			(*rl_deprep_term_function)();
+-#endif
+ 			rl_clear_signals();
+ 			rl_pending_input = 0;
+ 			break;
+diff -urN -urN rc-1.7.1.org/tree.c rc-1.7.1/tree.c
+--- rc-1.7.1.org/tree.c	2001-10-01 21:21:08.000000000 +0900
++++ rc-1.7.1/tree.c	2009-08-31 20:11:42.000000000 +0900
+@@ -39,6 +39,7 @@
+ 		n->u[1].p = va_arg(ap, Node *);
+ 		break;
+ 	case nForin:
++	case nVarslice:
+ 		n = nalloc(offsetof(Node, u[3]));
+ 		n->u[0].p = va_arg(ap, Node *);
+ 		n->u[1].p = va_arg(ap, Node *);
+@@ -104,6 +105,7 @@
+ 		n->u[1].p = treecpy(s->u[1].p, alloc);
+ 		break;
+ 	case nForin:
++	case nVarslice:
+ 		n = (*alloc)(offsetof(Node, u[3]));
+ 		n->u[0].p = treecpy(s->u[0].p, alloc);
+ 		n->u[1].p = treecpy(s->u[1].p, alloc);
+@@ -157,6 +159,7 @@
+ 		treefree(s->u[0].p);
+ 		break;
+ 	case nForin:
++	case nVarslice:
+ 		treefree(s->u[2].p);
+ 		treefree(s->u[1].p);
+ 		treefree(s->u[0].p);
+diff -urN -urN rc-1.7.1.org/var.c rc-1.7.1/var.c
+--- rc-1.7.1.org/var.c	2002-08-15 21:44:39.000000000 +0900
++++ rc-1.7.1/var.c	2009-08-31 20:11:42.000000000 +0900
+@@ -18,7 +18,6 @@
+ 	new = get_var_place(name, stack);
+ 	new->def = newdef;
+ 	new->extdef = NULL;
+-	set_exportable(name, TRUE);
+ #if READLINE
+ 	if (interactive && (streq(name, "TERM") || streq(name, "TERMCAP")))
+ 		rl_reset_terminal(NULL);
+@@ -48,7 +47,6 @@
+ 	strcpy(new->extdef, extdef);
+ 	if (i != -1)
+ 		alias(name, varlookup(name), FALSE);
+-	set_exportable(name, TRUE);
+ 	return TRUE;
+ }
+ 
+diff -urN -urN rc-1.7.1.org/walk.c rc-1.7.1/walk.c
+--- rc-1.7.1.org/walk.c	2001-11-01 20:29:31.000000000 +0900
++++ rc-1.7.1/walk.c	2009-08-31 20:11:42.000000000 +0900
+@@ -35,7 +35,7 @@
+ 	switch (n->type) {
+ 	case nArgs: case nBackq: case nConcat: case nCount:
+ 	case nFlat: case nLappend: case nRedir: case nVar:
+-	case nVarsub: case nWord:
++	case nVarsub: case nVarslice: case nWord:
+ 		exec(glob(glom(n)), parent);	/* simple command */
+ 		break;
+ 	case nBody:

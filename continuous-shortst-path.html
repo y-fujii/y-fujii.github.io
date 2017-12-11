@@ -1,0 +1,138 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>連続な空間での最短経路を求める</title>
+		<script defer type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_SVG.js"></script>
+		<link rel="stylesheet" href="./default.css">
+		<style>
+			object {
+				width:  20em;
+			}
+		</style>
+	</head>
+<body>
+
+<script type="math/tex">
+    \newcommand{\block}[2]{\begin{#1} #2 \end{#1}}
+    \newcommand{\D}{\mathrm{d}}
+    \newcommand{\pdiff}[2]{\frac{\partial #1}{\partial #2}}
+    \renewcommand{\(}{\left(}
+    \renewcommand{\)}{\right)}
+</script>
+
+<h1>連続な空間での最短経路を求める</h1>
+
+<p class="figure"><object data="./img/shortest-path.svg">shortest-path.svg</object></p>
+
+<p>Dijkstra 法や A* 探索なんかを格子に適用して最短経路を求めるアルゴリズムでは、最近接の 4 点の接続を考慮する場合で縦横の移動のみ、次近接の 8 点を考慮しても縦横斜め ±45° の移動しか考慮されなくて、任意角度で移動できる場合の最短経路は (そのままでは) 求められない。これをなんとかする (賢い人がなんとかした) 話。正確には最短経路アルゴリズムとは直交している話題だけどまあ。例によって専門家でも何でもないので、正確さは期待するな。</p>
+
+<p>アプローチとしては、離散的な空間で定義されるアルゴリズムを一旦連続な空間に持ちこんで回転対称性を回復させ、そのあと再度離散化する。</p>
+
+<h2>連続化</h2>
+
+<p>dynamic programming で格子上での最短経路を求める場合、大ざっぱに次のような反復をする。たぶんグラフ理論における Bellmann-Ford とかいうアルゴリズム (以降、出発地点から <code>(x, y)</code> までの最短距離を <code>d[x, y]</code> とする) 。</p>
+<pre>
+while (d[] changed) {
+    for each (x, y) {
+        d[x, y] = 1 + min(
+            d[x - 1, y], d[x + 1, y],
+            d[x, y - 1], d[x, y + 1],
+        )
+    }
+}
+</pre>
+
+<p>各格子点からの最短距離が分かれば、出発点から順次一番値の小さい近傍を辿っていくことで最短経路が得られる。</p>
+
+<p>さて、簡単のため、不動点方程式 (反復しても値が変わらなくなったときに満たしている方程式) を考える。</p>
+
+<div class="math">\[
+\block{align*}{
+    d_{i, j} &amp;= \min( d_{i - 1, j}, d_{i + 1, j}, d_{i, j - 1}, d_{i, j + 1} ) + 1
+}
+\]</div>
+
+<p>この方程式を一旦連続化して、回転対称性が成り立つようにしてみる。</p>
+
+<div class="math">\[
+\block{align*}{
+    d(\vec{x}) &amp;= \min_{|\vec{n}| = 1} \bigl[ d( \vec{x} + \epsilon \vec{n} ) \bigr] + \epsilon
+}
+\]</div>
+
+<p>この式を変形していくと、</p>
+
+<div class="math">\[
+\block{align*}{
+    d(\vec{x}) &amp;= \min_{|\vec{n}| = 1} \bigl[ d(\vec{x}) + \epsilon \vec{n} \cdot \nabla d(\vec{x}) + O(\epsilon^2) \bigr] + \epsilon
+    \\
+    &amp;= d(\vec{x}) + \epsilon \min_{|\vec{n}| = 1} \bigl[ \vec{n} \cdot \nabla d(\vec{x}) \bigr] + \epsilon + O(\epsilon^2)
+    \\
+    &amp;= d(\vec{x}) - \epsilon \frac{\nabla d(\vec{x})}{|\nabla d(\vec{x})|} \cdot \nabla d(\vec{x}) + \epsilon + O(\epsilon^2)
+}
+\]</div>
+<div class="math">\[
+\block{align*}{
+    \therefore \left| \nabla d(\vec{x}) \right| = 1
+}
+\]</div>
+
+<p>なんか偏微分方程式が求まった (<a href="http://en.wikipedia.org/wiki/Eikonal_equation">Eikonal 方程式</a>というらしい) 。このような DP から派生する偏微分方程式は <a href="http://en.wikipedia.org/wiki/Hamilton–Jacobi–Bellman_equation">Hamilton-Jacobi-Bellman 方程式</a>と呼ばれているようだ。</p>
+
+<p>これを再度離散化して数値解を求めれば、ユークリッド空間での最短経路が求まるんじゃない? という期待に胸が膨らむ。</p>
+
+<h2>離散化</h2>
+
+<p>しかし残念ながら、この方程式を単純に中央差分などで差分化して解こうとしても、まともに収束しない。この理由を考えてみる。</p>
+
+<p>一般に境界条件が与えられたとき、多くの場合この方程式を完全に満たす解は存在しない。これは直感的には明らかで、いま最短距離フィールド \( d(\vec{x}) \) が求まったと仮定すると、ある点までの最短経路が複数ある場所が \( d(\vec{x}) \) の谷底で、微分不可能になっている。そこでこの方程式を解く場合には、微分不可能な面を許す、少し弱い条件の解を考える必要がある (弱解/粘性解) 。これは HJB 方程式に共通する特徴らしい。
+
+<p>そこで、風上差分のようなものを考える。結果を書いてしまうと、次のような差分化を行えばうまくいく (<a href="http://www.jstor.org/stable/2158283">Rouy-Tourin scheme, 1992</a>. もちろんこれが唯一の方法ではない) 。</p>
+
+<div class="math">\[
+\block{align*}{
+    \Bigl\{ \min\bigl( d_{i + 1, j} - d_{i, j}, d_{i - 1, j} - d_{i, j}, 0 \bigr) \Bigr\} ^ 2 +
+    \Bigl\{ \min\bigl( d_{i, j + 1} - d_{i, j}, d_{i, j - 1} - d_{i, j}, 0 \bigr) \Bigr\} ^ 2 =
+    1
+}
+\]</div>
+
+<p>素朴に考えると \( \min( \cdots, 0) \) の 0 は必要なさそうに思えるのだけど、どうもこれが重要らしくて、これがないと正しい値に収束しない。このような離散化スキームは弱解で議論できるようなのだけれど、私は理解していない (本当はここが一番キモなんだろうなあ) 。</p>
+
+<p>さて、この方程式は \( d_{i, j} \) について 1 or 2 次式なので、 \( d_{i, j} \) について解いてしまい、 Gauss-Seidel 的に反復する。 \( \min, \max \) をごにょごにょして整理すると、解は常に 1 つ存在することが分かって、プログラムは次のようにそこそこシンプルな形になる。</p>
+
+<pre>
+while (d[] changed) {
+    for each (x, y) {
+        fx = min(d[x - 1, y], d[x + 1, y])
+        fy = min(d[x, y - 1], d[x, y - 1])
+        if abs(fx - fy) &lt; 1 {
+            d[x, y] = (fx + fy + sqrt(2 - (fx - fy) ** 2)) / 2
+        }
+        else {
+            d[x, y] = 1 + min(fx, fy)
+        }
+    }
+}
+</pre>
+
+<p>風上差分のおかげで情報が一方向に伝わるため、収束は速い (たぶん最悪でも有限回 O(格子数^2) で収束。嘘かもしれないので、正確なところを知りたい方は論文参照) 。</p>
+
+<h2>備考</h2>
+<p>上のプログラムはかなり素朴なものだけれど、アップデートを Dijkstra 的に効率良く行うことも可能 (<a href="http://www.math.berkeley.edu/~sethian/">Fast Marching Method, J. A. Sethian, 1996</a>) 。</p>
+<p>また、ユークリッド空間での最短経路を求める手法としては、計算幾何学的なアプローチも考えられる…というか、こっちの方が主流なのだと思う。二次元なら、障害物を表すポリゴンの頂点数に対して多項式時間で収まる (<a href="http://en.wikipedia.org/wiki/Euclidean_shortest_path">Wikipedia:Euclidean shortest path</a>. リンク貼りつつ自分では読んでないけど、各二頂点間が直線で結ばれるかを調べてグラフを作るのは、素朴にやっても多項式時間に収まりそう) 。</p>
+<p>じゃあ PDE で解くメリットは何よ、というと、移動にかかるコストが空間の各点で異なり、最短経路がうにょーっと曲線になるような場合にも簡単に応用できるという点がある。</p>
+<p>あと、空間の次元が高い場合に計算量的なメリットがあるかもしれないけれど…、これについてはよく分からない (ここの「分からない」は単に私が知らない/分からないの意) 。</p>
+
+<h2>むすび</h2>
+
+<p>問題を一旦連続化して対称性を回復し、再度離散化するという手法は面白いし、応用範囲も広そうで夢が広がる (広がるのは夢だけです) 。</p>
+
+<p>元の離散化された空間で考えていると、移動できる方向を増やすには、反復の際に考慮する格子点をどんどん増やすしかない気がしてくるのに、一旦連続な空間に持ちこんで再度離散化すると、最近接点だけで任意方向に移動できる場合の最短経路が求まるって、何だか不思議な気がしませんか。</p>
+
+<p><a href="../"><code>cd ../</code></a></p>
+<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

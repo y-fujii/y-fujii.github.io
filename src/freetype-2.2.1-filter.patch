@@ -1,0 +1,127 @@
+diff -urN freetype-2.2.1.org/src/autofit/afcjk.c freetype-2.2.1/src/autofit/afcjk.c
+--- freetype-2.2.1.org/src/autofit/afcjk.c	2006-03-20 22:34:23.000000000 +0900
++++ freetype-2.2.1/src/autofit/afcjk.c	2006-07-10 20:46:35.000000000 +0900
+@@ -634,7 +634,7 @@
+      *  We snap the width of vertical stems for the monochrome and
+      *  horizontal LCD rendering targets only.
+      */
+-    if ( mode == FT_RENDER_MODE_MONO || mode == FT_RENDER_MODE_LCD )
++    if ( mode == FT_RENDER_MODE_MONO )
+       other_flags |= AF_LATIN_HINTS_HORZ_SNAP;
+ 
+     /*
+@@ -647,12 +647,15 @@
+     /*
+      *  We adjust stems to full pixels only if we don't use the `light' mode.
+      */
+-    if ( mode != FT_RENDER_MODE_LIGHT )
++    if ( mode != FT_RENDER_MODE_LIGHT && mode != FT_RENDER_MODE_LCD )
+       other_flags |= AF_LATIN_HINTS_STEM_ADJUST;
+ 
+     if ( mode == FT_RENDER_MODE_MONO )
+       other_flags |= AF_LATIN_HINTS_MONO;
+ 
++    if ( mode == FT_RENDER_MODE_LCD )
++      scaler_flags |= AF_SCALER_FLAG_NO_HORIZONTAL;
++
+     scaler_flags |= AF_SCALER_FLAG_NO_ADVANCE;
+ 
+     hints->scaler_flags = scaler_flags;
+diff -urN freetype-2.2.1.org/src/autofit/aflatin.c freetype-2.2.1/src/autofit/aflatin.c
+--- freetype-2.2.1.org/src/autofit/aflatin.c	2006-03-22 02:39:16.000000000 +0900
++++ freetype-2.2.1/src/autofit/aflatin.c	2006-07-10 20:35:09.000000000 +0900
+@@ -1344,7 +1344,7 @@
+      *  We snap the width of vertical stems for the monochrome and
+      *  horizontal LCD rendering targets only.
+      */
+-    if ( mode == FT_RENDER_MODE_MONO || mode == FT_RENDER_MODE_LCD )
++    if ( mode == FT_RENDER_MODE_MONO )
+       other_flags |= AF_LATIN_HINTS_HORZ_SNAP;
+ 
+     /*
+@@ -1357,7 +1357,7 @@
+     /*
+      *  We adjust stems to full pixels only if we don't use the `light' mode.
+      */
+-    if ( mode != FT_RENDER_MODE_LIGHT )
++    if ( mode != FT_RENDER_MODE_LIGHT && mode != FT_RENDER_MODE_LCD )
+       other_flags |= AF_LATIN_HINTS_STEM_ADJUST;
+ 
+     if ( mode == FT_RENDER_MODE_MONO )
+@@ -1367,7 +1367,8 @@
+      *  In `light' hinting mode we disable horizontal hinting completely.
+      *  We also do it if the face is italic.
+      */
+-    if ( mode == FT_RENDER_MODE_LIGHT                    ||
++    if ( mode == FT_RENDER_MODE_LIGHT ||
++         mode == FT_RENDER_MODE_LCD ||
+          (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0 )
+       scaler_flags |= AF_SCALER_FLAG_NO_HORIZONTAL;
+ 
+diff -urN freetype-2.2.1.org/src/smooth/ftgrays.c freetype-2.2.1/src/smooth/ftgrays.c
+--- freetype-2.2.1.org/src/smooth/ftgrays.c	2006-02-26 01:48:39.000000000 +0900
++++ freetype-2.2.1/src/smooth/ftgrays.c	2006-07-10 20:32:50.000000000 +0900
+@@ -85,6 +85,8 @@
+ /* experimental support for gamma correction within the rasterizer */
+ #define xxxGRAYS_USE_GAMMA
+ 
++#define USE_FILTER
++
+ 
+   /*************************************************************************/
+   /*                                                                       */
+@@ -1305,17 +1307,45 @@
+       coverage = raster->gamma[coverage];
+ #endif
+ 
+-      if ( coverage )
+-#if 1
+-        FT_MEM_SET( p + spans->x, (unsigned char)coverage, spans->len );
+-#else /* 1 */
++#ifdef USE_FILTER
++      if( coverage > 0 )
+       {
+-        q     = p + spans->x;
+-        limit = q + spans->len;
+-        for ( ; q < limit; q++ )
+-          q[0] = (unsigned char)coverage;
++          int x0 = spans->x;
++          int x1 = spans->x + spans->len;
++
++          if( x0 > 0 )
++          {
++              p[x0 - 1] += coverage / 3;
++          }
++
++          if( spans->len > 1 )
++          {
++              p[x0] += coverage * 2 / 3;
++
++              int x;
++              for( x = x0 + 1; x < x1 - 1; ++x )
++              {
++                  p[x] = coverage;
++              }
++
++              p[x1 - 1] += coverage * 2 / 3;
++          }
++          else
++          {
++              p[x0] += coverage / 3;
++          }
++
++          if( x1 < map->width )
++          {
++              p[x1] += coverage / 3;
++          }
+       }
+-#endif /* 1 */
++#else
++      if( coverage > 0 )
++      {
++          FT_MEM_SET( p + spans->x, coverage, spans->len );
++      }
++#endif
+     }
+   }
+ 

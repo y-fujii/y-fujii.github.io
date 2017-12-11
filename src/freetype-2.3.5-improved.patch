@@ -1,0 +1,394 @@
+--- freetype-2.3.5/include/freetype/config/ftoption.h
++++ freetype-2.3.5/include/freetype/config/ftoption.h
+@@ -92,7 +92,7 @@
+   /* This is done to allow FreeType clients to run unmodified, forcing     */
+   /* them to display normal gray-level anti-aliased glyphs.                */
+   /*                                                                       */
+-/* #define FT_CONFIG_OPTION_SUBPIXEL_RENDERING */
++#define FT_CONFIG_OPTION_SUBPIXEL_RENDERING
+ 
+ 
+   /*************************************************************************/
+@@ -458,7 +458,7 @@
+   /*   Do not #undef this macro here, since the build system might         */
+   /*   define it for certain configurations only.                          */
+   /*                                                                       */
+-/* #define TT_CONFIG_OPTION_BYTECODE_INTERPRETER */
++#define TT_CONFIG_OPTION_BYTECODE_INTERPRETER
+ 
+ 
+   /*************************************************************************/
+@@ -505,7 +505,7 @@
+   /*     ...                                                               */
+   /*   }                                                                   */
+   /*                                                                       */
+-#define TT_CONFIG_OPTION_UNPATENTED_HINTING
++/* #define TT_CONFIG_OPTION_UNPATENTED_HINTING */
+ 
+ 
+   /*************************************************************************/
+--- freetype-2.3.5/src/autofit/afcjk.c
++++ freetype-2.3.5/src/autofit/afcjk.c
+@@ -22,6 +22,9 @@
+    *
+    */
+ 
++
++#include <assert.h>
++
+ #include "aftypes.h"
+ #include "aflatin.h"
+ 
+@@ -626,30 +629,40 @@
+     scaler_flags = hints->scaler_flags;
+     other_flags  = 0;
+ 
+-    /*
+-     *  We snap the width of vertical stems for the monochrome and
+-     *  horizontal LCD rendering targets only.
+-     */
+-    if ( mode == FT_RENDER_MODE_MONO || mode == FT_RENDER_MODE_LCD )
+-      other_flags |= AF_LATIN_HINTS_HORZ_SNAP;
+-
+-    /*
+-     *  We snap the width of horizontal stems for the monochrome and
+-     *  vertical LCD rendering targets only.
+-     */
+-    if ( mode == FT_RENDER_MODE_MONO || mode == FT_RENDER_MODE_LCD_V )
+-      other_flags |= AF_LATIN_HINTS_VERT_SNAP;
+-
+-    /*
+-     *  We adjust stems to full pixels only if we don't use the `light' mode.
+-     */
+-    if ( mode != FT_RENDER_MODE_LIGHT )
+-      other_flags |= AF_LATIN_HINTS_STEM_ADJUST;
+-
+-    if ( mode == FT_RENDER_MODE_MONO )
+-      other_flags |= AF_LATIN_HINTS_MONO;
+-
+-    scaler_flags |= AF_SCALER_FLAG_NO_ADVANCE;
++	switch( mode ) {
++		case FT_RENDER_MODE_NORMAL:
++			other_flags |=
++				AF_LATIN_HINTS_STEM_ADJUST;
++			break;
++
++		case FT_RENDER_MODE_LIGHT:
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		case FT_RENDER_MODE_MONO:
++			other_flags |=
++				AF_LATIN_HINTS_MONO |
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_HORZ_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			break;
++
++		case FT_RENDER_MODE_LCD:
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_HORIZONTAL |
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		case FT_RENDER_MODE_LCD_V:
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_VERTICAL |
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		default:
++			assert( 0 );
++	}
+ 
+     hints->scaler_flags = scaler_flags;
+     hints->other_flags  = other_flags;
+--- freetype-2.3.5/src/autofit/aflatin.c
++++ freetype-2.3.5/src/autofit/aflatin.c
+@@ -16,6 +16,8 @@
+ /***************************************************************************/
+ 
+ 
++#include <assert.h>
++
+ #include "aflatin.h"
+ #include "aferrors.h"
+ 
+@@ -1336,36 +1338,55 @@
+     scaler_flags = hints->scaler_flags;
+     other_flags  = 0;
+ 
+-    /*
+-     *  We snap the width of vertical stems for the monochrome and
+-     *  horizontal LCD rendering targets only.
+-     */
+-    if ( mode == FT_RENDER_MODE_MONO || mode == FT_RENDER_MODE_LCD )
+-      other_flags |= AF_LATIN_HINTS_HORZ_SNAP;
+-
+-    /*
+-     *  We snap the width of horizontal stems for the monochrome and
+-     *  vertical LCD rendering targets only.
+-     */
+-    if ( mode == FT_RENDER_MODE_MONO || mode == FT_RENDER_MODE_LCD_V )
+-      other_flags |= AF_LATIN_HINTS_VERT_SNAP;
+-
+-    /*
+-     *  We adjust stems to full pixels only if we don't use the `light' mode.
+-     */
+-    if ( mode != FT_RENDER_MODE_LIGHT )
+-      other_flags |= AF_LATIN_HINTS_STEM_ADJUST;
+-
+-    if ( mode == FT_RENDER_MODE_MONO )
+-      other_flags |= AF_LATIN_HINTS_MONO;
++	switch( mode ) {
++		case FT_RENDER_MODE_NORMAL:
++			other_flags |=
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_HORZ_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			break;
++
++		case FT_RENDER_MODE_LIGHT:
++			other_flags |=
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_HORIZONTAL |
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		case FT_RENDER_MODE_MONO:
++			other_flags |=
++				AF_LATIN_HINTS_MONO |
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_HORZ_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			break;
++
++		case FT_RENDER_MODE_LCD:
++			other_flags |=
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_HORIZONTAL |
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		case FT_RENDER_MODE_LCD_V:
++			other_flags |=
++				AF_LATIN_HINTS_HORZ_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_VERTICAL |
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		default:
++			assert( 0 );
++	}
+ 
+-    /*
+-     *  In `light' hinting mode we disable horizontal hinting completely.
+-     *  We also do it if the face is italic.
+-     */
+-    if ( mode == FT_RENDER_MODE_LIGHT                    ||
+-         (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0 )
+-      scaler_flags |= AF_SCALER_FLAG_NO_HORIZONTAL;
++	if( (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0 )
++		scaler_flags |= AF_SCALER_FLAG_NO_HORIZONTAL;
+ 
+     hints->scaler_flags = scaler_flags;
+     hints->other_flags  = other_flags;
+--- freetype-2.3.5/src/autofit/aflatin2.c
++++ freetype-2.3.5/src/autofit/aflatin2.c
+@@ -16,6 +16,8 @@
+ /***************************************************************************/
+ 
+ 
++#include <assert.h>
++
+ #include "aflatin.h"
+ #include "aflatin2.h"
+ #include "aferrors.h"
+@@ -1420,36 +1422,52 @@
+     scaler_flags = hints->scaler_flags;
+     other_flags  = 0;
+ 
+-    /*
+-     *  We snap the width of vertical stems for the monochrome and
+-     *  horizontal LCD rendering targets only.
+-     */
+-    if ( mode == FT_RENDER_MODE_MONO || mode == FT_RENDER_MODE_LCD )
+-      other_flags |= AF_LATIN_HINTS_HORZ_SNAP;
+-
+-    /*
+-     *  We snap the width of horizontal stems for the monochrome and
+-     *  vertical LCD rendering targets only.
+-     */
+-    if ( mode == FT_RENDER_MODE_MONO || mode == FT_RENDER_MODE_LCD_V )
+-      other_flags |= AF_LATIN_HINTS_VERT_SNAP;
+-
+-    /*
+-     *  We adjust stems to full pixels only if we don't use the `light' mode.
+-     */
+-    if ( mode != FT_RENDER_MODE_LIGHT )
+-      other_flags |= AF_LATIN_HINTS_STEM_ADJUST;
+-
+-    if ( mode == FT_RENDER_MODE_MONO )
+-      other_flags |= AF_LATIN_HINTS_MONO;
+-
+-    /*
+-     *  In `light' hinting mode we disable horizontal hinting completely.
+-     *  We also do it if the face is italic.
+-     */
+-    if ( mode == FT_RENDER_MODE_LIGHT                    ||
+-         (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0 )
+-      scaler_flags |= AF_SCALER_FLAG_NO_HORIZONTAL;
++	switch( mode ) {
++		case FT_RENDER_MODE_NORMAL:
++			other_flags |=
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_HORZ_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			break;
++
++		case FT_RENDER_MODE_LIGHT:
++			other_flags |=
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_HORIZONTAL |
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		case FT_RENDER_MODE_MONO:
++			other_flags |=
++				AF_LATIN_HINTS_MONO |
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_HORZ_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			break;
++
++		case FT_RENDER_MODE_LCD:
++			other_flags |=
++				AF_LATIN_HINTS_VERT_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_HORIZONTAL |
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		case FT_RENDER_MODE_LCD_V:
++			other_flags |=
++				AF_LATIN_HINTS_HORZ_SNAP |
++				AF_LATIN_HINTS_STEM_ADJUST;
++			scaler_flags |=
++				AF_SCALER_FLAG_NO_VERTICAL |
++				AF_SCALER_FLAG_NO_ADVANCE;
++			break;
++
++		default:
++			assert( 0 );
++	}
+ 
+     hints->scaler_flags = scaler_flags;
+     hints->other_flags  = other_flags;
+--- freetype-2.3.5/src/autofit/afloader.c
++++ freetype-2.3.5/src/autofit/afloader.c
+@@ -171,7 +171,10 @@
+ 
+       /* we now need to hint the metrics according to the change in */
+       /* width/positioning that occurred during the hinting process */
+-      if ( scaler->render_mode != FT_RENDER_MODE_LIGHT )
++      if(
++        scaler->render_mode == FT_RENDER_MODE_MONO ||
++        scaler->render_mode == FT_RENDER_MODE_NORMAL
++      )
+       {
+         FT_Pos        old_rsb, old_lsb, new_lsb;
+         FT_Pos        pp1x_uh, pp2x_uh;
+--- freetype-2.3.5/src/base/ftlcdfil.c
++++ freetype-2.3.5/src/base/ftlcdfil.c
+@@ -275,7 +275,8 @@
+     /* the values here sum up to a value larger than 256, */
+     /* providing a cheap gamma correction                 */
+     static const FT_Byte  default_filter[5] =
+-                            { 0x10, 0x40, 0x70, 0x40, 0x10 };
++                            /* { 0x10, 0x40, 0x70, 0x40, 0x10 }; */
++                            { 21, 64, 86, 64, 21 };
+ 
+ 
+     if ( library == NULL )
+--- freetype-2.3.5/src/pshinter/pshalgo.c
++++ freetype-2.3.5/src/pshinter/pshalgo.c
+@@ -16,6 +16,8 @@
+ /***************************************************************************/
+ 
+ 
++#include <assert.h>
++
+ #include <ft2build.h>
+ #include FT_INTERNAL_OBJECTS_H
+ #include FT_INTERNAL_DEBUG_H
+@@ -2241,16 +2243,50 @@
+       }
+     }
+ 
+-    glyph->do_horz_hints = 1;
+-    glyph->do_vert_hints = 1;
+-
+-    glyph->do_horz_snapping = FT_BOOL( hint_mode == FT_RENDER_MODE_MONO ||
+-                                       hint_mode == FT_RENDER_MODE_LCD  );
+-
+-    glyph->do_vert_snapping = FT_BOOL( hint_mode == FT_RENDER_MODE_MONO  ||
+-                                       hint_mode == FT_RENDER_MODE_LCD_V );
+-
+-    glyph->do_stem_adjust   = FT_BOOL( hint_mode != FT_RENDER_MODE_LIGHT );
++	switch( hint_mode ) {
++		case FT_RENDER_MODE_NORMAL:
++			glyph->do_horz_hints = 1;
++			glyph->do_vert_hints = 1;
++			glyph->do_horz_snapping = 0;
++			glyph->do_vert_snapping = 0;
++			glyph->do_stem_adjust = 1;
++			break;
++
++		case FT_RENDER_MODE_LIGHT:
++			glyph->do_horz_hints = 0;
++			glyph->do_vert_hints = 1;
++			glyph->do_horz_snapping = 0;
++			glyph->do_vert_snapping = 0;
++			glyph->do_stem_adjust = 0;
++			break;
++
++		case FT_RENDER_MODE_MONO:
++			glyph->do_horz_hints = 1;
++			glyph->do_vert_hints = 1;
++			glyph->do_horz_snapping = 1;
++			glyph->do_vert_snapping = 1;
++			glyph->do_stem_adjust = 1;
++			break;
++
++		case FT_RENDER_MODE_LCD:
++			glyph->do_horz_hints = 0;
++			glyph->do_vert_hints = 1;
++			glyph->do_horz_snapping = 0;
++			glyph->do_vert_snapping = 0;
++			glyph->do_stem_adjust = 0;
++			break;
++
++		case FT_RENDER_MODE_LCD_V:
++			glyph->do_horz_hints = 1;
++			glyph->do_vert_hints = 0;
++			glyph->do_horz_snapping = 0;
++			glyph->do_vert_snapping = 0;
++			glyph->do_stem_adjust = 0;
++			break;
++
++		default:
++			assert( 0 );
++	}
+ 
+     for ( dimension = 0; dimension < 2; dimension++ )
+     {

@@ -1,0 +1,46 @@
+--- mlterm-2.9.2/xwindow/x_screen.c.orig	2005-03-02 23:13:46.000000000 +0900
++++ mlterm-2.9.2/xwindow/x_screen.c	2006-12-17 01:12:45.000000000 +0900
+@@ -1494,6 +1494,8 @@
+ 			end_row = swp ;
+ 		}
+ 
++		ml_term_set_modified_lines_in_screen( screen->term, beg_row, end_row );
++
+ 	#ifdef  __DEBUG
+ 		kik_debug_printf( KIK_DEBUG_TAG " exposed [row] from %d to %d [x] from %d to %d\n" ,
+ 			beg_row , end_row , x , x + width) ;
+@@ -1504,14 +1506,32 @@
+ 		beg_row = convert_y_to_row( screen , NULL , y) ;
+ 		end_row = convert_y_to_row( screen , NULL , y + height) ;
+ 
++#ifdef OPTIMIZE_REDRAWING
++		ml_screen_logical( screen->term->screen );
++
++		int row;
++		for( row = beg_row; row <= end_row; ++row )
++		{
++			ml_line_t* line = ml_screen_get_line_in_screen( screen->term->screen, row );
++			if( line != NULL )
++			{
++				uint beg_col = convert_x_to_char_index( screen, line, NULL, x );
++				uint end_col = convert_x_to_char_index( screen, line, NULL, x + width );
++				ml_line_set_modified( line, beg_col, end_col );
++			}
++		}
++
++		ml_screen_visual( screen->term->screen );
++#else
++		ml_term_set_modified_lines_in_screen( screen->term, beg_row, end_row );
++#endif
++
+ 	#ifdef  __DEBUG
+ 		kik_debug_printf( KIK_DEBUG_TAG " exposed [row] from %d to %d [y] from %d to %d\n" ,
+ 			beg_row , end_row , y , y + height) ;
+ 	#endif
+ 	}
+ 
+-	ml_term_set_modified_lines_in_screen( screen->term , beg_row , end_row) ;
+-
+ 	redraw_screen( screen) ;
+ 	highlight_cursor( screen) ;
+ }

@@ -1,0 +1,148 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="ja">
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8"> 
+        <title>C++ template の(部分)?特殊化ができるとき、できないとき</title>
+        <link rel="stylesheet" href="/default.css">
+        <style type="text/css">
+            .d { color: #c02020; }
+            .n { color: #20a020; }
+        </style>
+    </head>
+<body>
+
+<h1>C++ template の（部分）特殊化ができるとき、できないとき</h1>
+<p>STL はまあ普通に使う、くらいの軟弱な知識で C++ を使っていると、クラス内で関数テンプレートの特殊化をしようとしてコンパイルエラーになって、なんでここで特殊化できないんだよ〜と愚痴を言っていたら、さらに恐ろしいことに、特殊化はできないのに部分特殊化はできる場合に遭遇したりして、 C++ の闇に触れた気分になるのだけど、実はそうでもないという話（少なくとも、ユーザの側から理解するだけなら、ね）。</p>
+
+<h2>（部分）特殊化できる条件</h2>
+<p>ややこしく感じる理由は、特殊化できる条件と、部分特殊化できる条件が全く別だから。実はそんなに複雑ではない。</p>
+<dl>
+    <dt>特殊化できる</dt>
+    <dd>OK: 名前空間スコープで定義</dd>
+    <dd>NG: クラススコープで定義</dd>
+
+    <dt>部分特殊化できる</dt>
+    <dd>OK: クラステンプレート</dd>
+    <dd>NG: 関数（⊃メンバ関数）テンプレート</dd>
+</dl>
+
+<h3>例</h3>
+<pre>
+template&lt;class T&gt; inline void func     () {}
+template&lt;class T&gt; inline void func&lt;T*&gt; () {} // error
+template&lt;&gt;        inline void func&lt;int&gt;() {} // OK
+
+struct Outer {
+    template&lt;class T&gt; class Inner      {};
+    template&lt;class T&gt; class Inner&lt;T*&gt;  {}; // OK
+    template&lt;&gt;        class Inner&lt;int&gt; {}; // error
+
+    template&lt;class T&gt; void member     () {}
+    template&lt;class T&gt; void member&lt;T*&gt; () {} // error
+    template&lt;&gt;        void member&lt;int&gt;() {} // error
+};
+
+template&lt;class T&gt; struct Outer::Inner&lt;T*&gt;  {}; // OK
+template&lt;&gt;        struct Outer::Inner&lt;int&gt; {}; // OK
+
+template&lt;class T&gt; inline void Outer::member&lt;T*&gt; () {} // error
+template&lt;&gt;        inline void Outer::member&lt;int&gt;() {} // OK
+</pre>
+
+<h2>クラステンプレート内テンプレート</h2>
+<p>クラステンプレート内で宣言されたテンプレートも部分特殊化が可能。特殊化は、囲っている（外の）クラステンプレートが全て特殊化されている場合のみ可能。</p>
+
+<h3>例</h3>
+<pre>
+template&lt;class T&gt; struct Outer {
+    template&lt;class U&gt; class Inner {};
+};
+template&lt;class T&gt; template&lt;class U&gt; struct Outer&lt;T&gt;  ::Inner&lt;U*&gt;  {}; // OK
+template&lt;class T&gt; template&lt;&gt;        struct Outer&lt;T&gt;  ::Inner&lt;int&gt; {}; // error
+template&lt;&gt;        template&lt;&gt;        struct Outer&lt;int&gt;::Inner&lt;int&gt; {}; // OK
+</pre>
+
+<h2>回避策</h2>
+<p>定義位置を変えただけでは対処できないのは、まとめると</p>
+<ul>
+    <li>関数テンプレートの部分特殊化</li>
+    <li>クラステンプレート内テンプレートの特殊化</li>
+</ul>
+<p>の二つ（たぶん）。でもこれらに相当する挙動が実現不可能かというとそうではなくて、適当に wrapper をこしらえて委譲すればいい。</p>
+<p>例えば、関数テンプレートを部分特殊化したいとき、</p>
+<pre>
+template&lt;int X, int Y&gt; inline void func      () {}
+template&lt;int Y&gt;        inline void func&lt;0, Y&gt;() {} // error
+</pre>
+<p>こういうのは、</p>
+<pre>
+template&lt;int X, int Y&gt; struct Func {
+    static int f() {}
+};
+template&lt;int Y&gt; struct Func&lt;0, Y&gt; {
+    static int f() {}
+};
+
+template&lt;int X, int Y&gt; inline void func() {
+    Func&lt;X, Y&gt;::f();
+}
+</pre>
+<p>こんな風にクラステンプレートに委譲すれば等価なことができる。</p>
+<p>クラステンプレート内テンプレートの特殊化も、</p>
+<pre>
+template&lt;class T&gt; struct Outer {
+    template&lt;class U&gt; void member() {}
+};
+template&lt;class T&gt; template&lt;&gt; inline void Outer&lt;T&gt;::member&lt;int&gt;() {} // error
+</pre>
+<p>これは例えば</p>
+<pre>
+template&lt;class T&gt; struct Outer {
+    template&lt;class U&gt; void member() {
+        Member&lt;U&gt;::f();
+    }   
+
+private:
+    template&lt;class U, class = void&gt; struct Member {
+        static void f() {}
+    };  
+    template&lt;class V&gt; struct Member&lt;int, V&gt; {
+        static void f() {}
+    };  
+};
+</pre>
+<p>こうしてクラステンプレートの部分特殊化に持ち込める。方法は他にも色々あって、 boost::type&lt;T&gt; 的なものを使って関数のオーバーロードで解決することもできる。でもこのへんの包括的な話を書けるほどよく知らない。</p>
+
+<h2>Two-phase name look up</h2>
+<p>テンプレートの特殊化を活用する上で頭の隅に入れておきたい非自明な挙動の一つに、 two-phase name look up なるものがある。</p>
+<p>テンプレートでない普通の関数やクラスでは、その中で使う名前（関数名とか型名とか）は、定義する場所より前に宣言されている必要がある。これはテンプレートを活用する上で不便だ。例えば std::swap を自分の定義した型に対し特殊化した場合を考えてみればいい。</p>
+<p>そこで two-phase name look up が登場する。これは大ざっぱに言って、テンプレート内で使われる名前について、 (0)テンプレートパラメータに依存しない名前は（通常通り）<strong>定義された時点</strong>で探索を行い、 (1)テンプレートパラメータに依存する名前はテンプレートが<strong>実体化される時点</strong>で探索を行う、というもの。なにそれこわい。</p>
+<p>依存(する|しない)の定義は、 <a href="http://www.codeproject.com/KB/cpp/TwoPhaseLookup.aspx">Standard Features Missing From VC++ 7.1. Part III: Two-Phase Name Lookup</a> に具体例つきで載っているのでそちらに任せるとして、例だけ引用しておくと、</p>
+<pre>
+<span class="n">依存しない名前 (non-dependent name)</span>
+<span class="d">依存する名前 (dependent name)</span>
+
+template&lt;class <span class="d">T</span>, int <span class="d">Size</span>&gt;
+class Example: public <span class="d">Base</span>&lt;<span class="d">T</span>&gt; {
+    int <span class="d">myArray_</span>[<span class="d">Size</span>];
+    <span class="n">std::vector</span>&lt;int&gt; <span class="n">myVector_</span>;
+    typename <span class="d">T</span>::<span class="d">iterator</span> <span class="d">iterator</span>;
+    void <span class="d">func</span> (<span class="d">T</span>* <span class="d">arg</span>) {
+        using namespace std;
+        int <span class="n">size</span> = <span class="d">arg</span>-&gt;<span class="d">GetSize</span>();
+        for (int <span class="n">i</span> = 0; <span class="n">i</span> &lt; <span class="n">size</span>; ++<span class="n">i</span>)
+            <span class="n">cout</span> &lt;&lt; <span class="n">i</span>;
+    }
+};
+
+※一部引用元で抜け落ちている部分を補完しています。筆者は仕様レベルで理解して
+　いるわけではないので、この色分けは参考程度にお願いします。
+</pre>
+<p>なんだそう。おおまかには、テンプレートパラメータに依存している型や変数や式を再帰的に辿る感じ。仕様書的な複雑さはともかく、直感に反する感じではないので、使う側としてはそんなに怯える必要はない、のかな。</p>
+<p>このへん、いち C++ ユーザがどこまで理解しているべきなのか…。</p>
+
+<p><a href="../">戻る</a></p>
+<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

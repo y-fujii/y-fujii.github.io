@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+	<head>
+		<title>404 - Not Found</title>
+		<link rel="stylesheet" href="/default.css">
+		<style>
+			#dirlist {
+				font-family: Inconsolata, monospace;
+			}
+		</style>
+		<script>
+			function createLink( url ) {
+				var e = document.createElement( "a" );
+				e.href        = url;
+				e.textContent = url;
+				return e;
+			}
+
+			window.onload = function() {
+				var eDir = document.querySelector( "#dirlist" );
+				var path = location.pathname;
+				while( true ) {
+					path = path.replace( /[^/]*[/]*$/, "" );
+					if( path.length === 0 ) {
+						break;
+					}
+					var e = document.createElement( "li" );
+					e.appendChild( createLink( location.protocol + "//" + location.host + path ) );
+					eDir.appendChild( e );
+				}
+			}
+		</script>
+	</head>
+	<body>
+		<p>404 - Not Found; You may be where I've never been.</p>
+		<ul id="dirlist"></ul>
+	</body>
+</html>

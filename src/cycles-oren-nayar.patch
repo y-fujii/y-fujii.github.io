@@ -1,0 +1,787 @@
+Index: intern/cycles/render/nodes.cpp
+===================================================================
+--- intern/cycles/render/nodes.cpp	(revision 41087)
++++ intern/cycles/render/nodes.cpp	(working copy)
+@@ -1276,6 +1276,25 @@
+ 	compiler.add(this, "node_diffuse_bsdf");
+ }
+ 
++/* Oren-Nayar BSDF Closure */
++
++OrenNayarBsdfNode::OrenNayarBsdfNode()
++{
++	closure = CLOSURE_BSDF_OREN_NAYAR_ID;
++
++	add_input("Roughness", SHADER_SOCKET_FLOAT, 0.5f);
++}
++
++void OrenNayarBsdfNode::compile(SVMCompiler& compiler)
++{
++	BsdfNode::compile(compiler, input("Roughness"), NULL);
++}
++
++void OrenNayarBsdfNode::compile(OSLCompiler& compiler)
++{
++	compiler.add(this, "node_oren_nayar_bsdf");
++}
++
+ /* Translucent BSDF Closure */
+ 
+ TranslucentBsdfNode::TranslucentBsdfNode()
+Index: intern/cycles/render/nodes.h
+===================================================================
+--- intern/cycles/render/nodes.h	(revision 41087)
++++ intern/cycles/render/nodes.h	(working copy)
+@@ -237,6 +237,11 @@
+ 	SHADER_NODE_CLASS(DiffuseBsdfNode)
+ };
+ 
++class OrenNayarBsdfNode : public BsdfNode {
++public:
++	SHADER_NODE_CLASS(OrenNayarBsdfNode)
++};
++
+ class TranslucentBsdfNode : public BsdfNode {
+ public:
+ 	SHADER_NODE_CLASS(TranslucentBsdfNode)
+Index: intern/cycles/test/test_closure/__init__.py
+===================================================================
+--- intern/cycles/test/test_closure/__init__.py	(revision 41087)
++++ intern/cycles/test/test_closure/__init__.py	(working copy)
+@@ -1,6 +1,7 @@
+ 
+ def run(test):
+ 	test.execute_xml("bsdf_diffuse.xml")
++	test.execute_xml("bsdf_oren_nayar.xml")
+ 	test.execute_xml("bsdf_reflection.xml")
+ 	test.execute_xml("bsdf_refraction.xml")
+ 	test.execute_xml("bsdf_glass.xml")
+Index: intern/cycles/test/test_closure/bsdf_oren_nayar.xml
+===================================================================
+--- intern/cycles/test/test_closure/bsdf_oren_nayar.xml	(revision 0)
++++ intern/cycles/test/test_closure/bsdf_oren_nayar.xml	(revision 0)
+@@ -0,0 +1,10 @@
++
++<include src="closure_pre.xml" />
++
++<shader name="monkey">
++	<oren_nayar_bsdf name="diffuse" color="0.8 0.5 0.0" />
++	<connect from="oren nayar bsdf" to="output surface" />
++</shader>
++
++<include src="closure_post.xml" />
++
+Index: intern/cycles/app/cycles_xml.cpp
+===================================================================
+--- intern/cycles/app/cycles_xml.cpp	(revision 41087)
++++ intern/cycles/app/cycles_xml.cpp	(working copy)
+@@ -408,6 +408,9 @@
+ 		else if(string_iequals(node.name(), "diffuse_bsdf")) {
+ 			snode = new DiffuseBsdfNode();
+ 		}
++		else if(string_iequals(node.name(), "oren_nayar_bsdf")) {
++			snode = new OrenNayarBsdfNode();
++		}
+ 		else if(string_iequals(node.name(), "translucent_bsdf")) {
+ 			snode = new TranslucentBsdfNode();
+ 		}
+Index: intern/cycles/kernel/osl/osl_closures.cpp
+===================================================================
+--- intern/cycles/kernel/osl/osl_closures.cpp	(revision 41087)
++++ intern/cycles/kernel/osl/osl_closures.cpp	(working copy)
+@@ -69,6 +69,7 @@
+ void OSLShader::register_closures(OSL::ShadingSystem *ss)
+ {
+ 	register_closure(ss, "diffuse", OSL_CLOSURE_BSDF_DIFFUSE_ID, bsdf_diffuse_params, bsdf_diffuse_prepare);
++	register_closure(ss, "oren_nayar", OSL_CLOSURE_BSDF_OREN_NAYAR_ID, bsdf_oren_nayar_params, bsdf_oren_nayar_prepare);
+ 	register_closure(ss, "translucent", OSL_CLOSURE_BSDF_TRANSLUCENT_ID, bsdf_translucent_params, bsdf_translucent_prepare);
+ 	register_closure(ss, "reflection", OSL_CLOSURE_BSDF_REFLECTION_ID, bsdf_reflection_params, bsdf_reflection_prepare);
+ 	register_closure(ss, "refraction", OSL_CLOSURE_BSDF_REFRACTION_ID, bsdf_refraction_params, bsdf_refraction_prepare);
+Index: intern/cycles/kernel/osl/osl_closures.h
+===================================================================
+--- intern/cycles/kernel/osl/osl_closures.h	(revision 41087)
++++ intern/cycles/kernel/osl/osl_closures.h	(working copy)
+@@ -41,6 +41,7 @@
+ 
+ enum {
+ 	OSL_CLOSURE_BSDF_DIFFUSE_ID,
++	OSL_CLOSURE_BSDF_OREN_NAYAR_ID,
+ 	OSL_CLOSURE_BSDF_TRANSLUCENT_ID,
+ 	OSL_CLOSURE_BSDF_REFLECTION_ID,
+ 	OSL_CLOSURE_BSDF_REFRACTION_ID,
+@@ -62,6 +63,7 @@
+ };
+ 
+ extern OSL::ClosureParam bsdf_diffuse_params[];
++extern OSL::ClosureParam bsdf_oren_nayar_params[];
+ extern OSL::ClosureParam bsdf_translucent_params[];
+ extern OSL::ClosureParam bsdf_reflection_params[];
+ extern OSL::ClosureParam bsdf_refraction_params[];
+@@ -82,6 +84,7 @@
+ extern OSL::ClosureParam closure_subsurface_params[];
+ 
+ void bsdf_diffuse_prepare(OSL::RendererServices *, int id, void *data);
++void bsdf_oren_nayar_prepare(OSL::RendererServices *, int id, void *data);
+ void bsdf_translucent_prepare(OSL::RendererServices *, int id, void *data);
+ void bsdf_reflection_prepare(OSL::RendererServices *, int id, void *data);
+ void bsdf_refraction_prepare(OSL::RendererServices *, int id, void *data);
+Index: intern/cycles/kernel/osl/nodes/node_oren_nayar_bsdf.osl
+===================================================================
+--- intern/cycles/kernel/osl/nodes/node_oren_nayar_bsdf.osl	(revision 0)
++++ intern/cycles/kernel/osl/nodes/node_oren_nayar_bsdf.osl	(revision 0)
+@@ -0,0 +1,31 @@
++/*
++ * Copyright 2011, Blender Foundation.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
++ */
++
++#include "stdosl.h"
++
++shader node_oren_nayar_bsdf(
++	color Color = color(0.8, 0.8, 0.8),
++	float Sigma = 0.0,
++	normal Normal = N,
++	output closure color BSDF = diffuse(Normal))
++{
++	float sigma = clamp(Sigma, 0.0, 1.0);
++
++	BSDF = Color * oren_nayar(Normal, sigma);
++}
++
+Index: intern/cycles/kernel/osl/nodes/CMakeLists.txt
+===================================================================
+--- intern/cycles/kernel/osl/nodes/CMakeLists.txt	(revision 41087)
++++ intern/cycles/kernel/osl/nodes/CMakeLists.txt	(working copy)
+@@ -14,6 +14,7 @@
+ 	node_convert_from_point.osl
+ 	node_convert_from_vector.osl
+ 	node_diffuse_bsdf.osl
++	node_oren_nayar_bsdf.osl
+ 	node_distorted_noise_texture.osl
+ 	node_emission.osl
+ 	node_environment_texture.osl
+Index: intern/cycles/kernel/osl/nodes/stdosl.h
+===================================================================
+--- intern/cycles/kernel/osl/nodes/stdosl.h	(revision 41087)
++++ intern/cycles/kernel/osl/nodes/stdosl.h	(working copy)
+@@ -435,6 +435,7 @@
+ // Closures
+ 
+ closure color diffuse(normal N) BUILTIN;
++closure color oren_nayar(normal N, float sigma) BUILTIN;
+ closure color translucent(normal N) BUILTIN;
+ closure color reflection(normal N, float eta) BUILTIN;
+ closure color reflection(normal N) { return reflection (N, 0.0); }
+Index: intern/cycles/kernel/osl/bsdf_oren_nayar.cpp
+===================================================================
+--- intern/cycles/kernel/osl/bsdf_oren_nayar.cpp	(revision 0)
++++ intern/cycles/kernel/osl/bsdf_oren_nayar.cpp	(revision 0)
+@@ -0,0 +1,132 @@
++// public domain
++
++#include <OpenImageIO/fmath.h>
++#include <OSL/genclosure.h>
++#include "osl_closures.h"
++
++CCL_NAMESPACE_BEGIN
++
++using namespace OSL;
++
++
++class OrenNayarClosure: public BSDFClosure {
++public:
++	Vec3 m_N;
++	float m_sigma;
++	float m_a, m_b;
++
++	OrenNayarClosure(): BSDFClosure(Labels::DIFFUSE) {}
++
++	void setup() {
++		m_a = 1.0f - 0.5f * (m_sigma * m_sigma) / (m_sigma * m_sigma + 0.33f);
++		m_b = 0.45f * (m_sigma * m_sigma) / (m_sigma * m_sigma + 0.09f);
++	}
++
++	bool mergeable(const ClosurePrimitive* other) const {
++		const OrenNayarClosure *comp = (const OrenNayarClosure*)other;
++		return
++			m_N == comp->m_N &&
++			m_sigma == comp->m_sigma &&
++			BSDFClosure::mergeable(other);
++	}
++
++	size_t memsize() const {
++		return sizeof(*this);
++	}
++
++	const char* name() const {
++		return "oren_nayar";
++	}
++
++	void print_on(std::ostream& out) const {
++		out << name() << " (";
++		out << "(" << m_N[0] << ", " << m_N[1] << ", " << m_N[2] << "), ";
++		out << m_sigma;
++		out << ")";
++	}
++
++	float albedo(const Vec3& omega_out) const {
++		return 1.0f;
++	}
++
++	Color3 eval_reflect(const Vec3& omega_out, const Vec3& omega_in, float& pdf) const {
++		if (/* Ng.dot(omega_in) > 0.0f && */ m_N.dot(omega_in) > 0.0f) {
++			pdf = float(M_1_PI);
++			float is = get_intensity(m_N, omega_out, omega_in);
++			return Color3(is, is, is);
++		}
++		else {
++			pdf = 0.0f;
++			return Color3(0.0f, 0.0f, 0.0f);
++		}
++	}
++
++	Color3 eval_transmit(const Vec3& omega_out, const Vec3& omega_in, float& pdf) const {
++		return Color3(0.0f, 0.0f, 0.0f);
++	}
++
++	ustring sample(
++		const Vec3& Ng,
++		const Vec3& omega_out, const Vec3& domega_out_dx, const Vec3& domega_out_dy,
++		float randu, float randv,
++		Vec3& omega_in, Vec3& domega_in_dx, Vec3& domega_in_dy,
++		float& pdf, Color3& eval
++	) const {
++		sample_uniform_hemisphere (m_N, omega_out, randu, randv, omega_in, pdf);
++
++		if (Ng.dot(omega_in) > 0.0f) {
++			float is = get_intensity(m_N, omega_out, omega_in);
++			eval.setValue(is, is, is);
++
++			// TODO: find a better approximation for the bounce
++			domega_in_dx = (2.0f * m_N.dot(domega_out_dx)) * m_N - domega_out_dx;
++			domega_in_dy = (2.0f * m_N.dot(domega_out_dy)) * m_N - domega_out_dy;
++			domega_in_dx *= 125.0f;
++			domega_in_dy *= 125.0f;
++		}
++		else {
++			pdf = 0.0f;
++		}
++
++		return Labels::REFLECT;
++	}
++
++private:
++	float get_intensity(Vec3 const& n, Vec3 const& v, Vec3 const& l) const {
++		float nl = max(n.dot(l), 0.0f);
++		float nv = max(n.dot(v), 0.0f);
++
++		Vec3 al = l - nl * n;
++		al.normalize();
++		Vec3 av = v - nv * n;
++		av.normalize();
++		float t = max(al.dot(av), 0.0f);
++
++		float cos_a, cos_b;
++		if (nl < nv) {
++			cos_a = nl;
++			cos_b = nv;
++		}
++		else {
++			cos_a = nv;
++			cos_b = nl;
++		}
++
++		float sin_a = sqrtf(1.0f - cos_a * cos_a);
++		float tan_b = sqrtf(1.0f - cos_b * cos_b) / (cos_b + FLT_MIN);
++
++		return nl * (m_a + m_b * t * sin_a * tan_b) * float(M_1_PI);
++	}
++};
++
++ClosureParam bsdf_oren_nayar_params[] = {
++	CLOSURE_VECTOR_PARAM	(OrenNayarClosure, m_N),
++	CLOSURE_FLOAT_PARAM		(OrenNayarClosure, m_sigma),
++	CLOSURE_STRING_KEYPARAM ("label"),
++	CLOSURE_FINISH_PARAM	(OrenNayarClosure)
++};
++
++CLOSURE_PREPARE(bsdf_oren_nayar_prepare, OrenNayarClosure)
++
++
++CCL_NAMESPACE_END
+Index: intern/cycles/kernel/osl/CMakeLists.txt
+===================================================================
+--- intern/cycles/kernel/osl/CMakeLists.txt	(revision 41087)
++++ intern/cycles/kernel/osl/CMakeLists.txt	(working copy)
+@@ -5,6 +5,7 @@
+ 	background.cpp
+ 	bsdf_ashikhmin_velvet.cpp
+ 	bsdf_diffuse.cpp
++	bsdf_oren_nayar.cpp
+ 	bsdf_microfacet.cpp
+ 	bsdf_reflection.cpp
+ 	bsdf_refraction.cpp
+Index: intern/cycles/kernel/svm/bsdf_oren_nayar.h
+===================================================================
+--- intern/cycles/kernel/svm/bsdf_oren_nayar.h	(revision 0)
++++ intern/cycles/kernel/svm/bsdf_oren_nayar.h	(revision 0)
+@@ -0,0 +1,102 @@
++// public domain
++
++#ifndef __BSDF_OREN_NAYAR_H__
++#define __BSDF_OREN_NAYAR_H__
++
++CCL_NAMESPACE_BEGIN
++
++
++typedef struct BsdfOrenNayarClosure {
++	float m_a;
++	float m_b;
++} BsdfOrenNayarClosure;
++
++
++__device float3 bsdf_oren_nayar_get_intensity(float3 const n, float3 const v, float3 const l, ShaderClosure const* sc)
++{
++	float nl = max(dot(n, l), 0.0f);
++	float nv = max(dot(n, v), 0.0f);
++
++	float3 al = normalize(l - nl * n);
++	float3 av = normalize(v - nv * n);
++	float t = max(dot(al, av), 0.0f);
++
++	float cos_a, cos_b;
++	if(nl < nv) {
++		cos_a = nl;
++		cos_b = nv;
++	}
++	else {
++		cos_a = nv;
++		cos_b = nl;
++	}
++
++	float sin_a = sqrtf(1.0f - cos_a * cos_a);
++	float tan_b = sqrtf(1.0f - cos_b * cos_b) / (cos_b + FLT_MIN);
++
++	float is = nl * (sc->data0 + sc->data1 * t * sin_a * tan_b) * M_1_PI_F;
++	return make_float3(is, is, is);
++}
++
++__device void bsdf_oren_nayar_setup(ShaderData *sd, ShaderClosure *sc, float sigma)
++{
++	sc->type = CLOSURE_BSDF_OREN_NAYAR_ID;
++	sd->flag |= SD_BSDF | SD_BSDF_HAS_EVAL;
++
++	sc->data0 = 1.0f - 0.5f * (sigma * sigma) / (sigma * sigma + 0.33f);
++	sc->data1 = 0.45f * (sigma * sigma) / (sigma * sigma + 0.09f);
++}
++
++__device void bsdf_oren_nayar_blur(ShaderClosure *sc, float roughness)
++{
++}
++
++__device float3 bsdf_oren_nayar_eval_reflect(const ShaderData *sd, const ShaderClosure *sc, const float3 I, const float3 omega_in, float *pdf)
++{
++	if (dot(sd->N, omega_in) > 0.0f && dot(sd->Ng, omega_in) > 0.0f) {
++		*pdf = 0.5f * M_1_PI_F;
++		return bsdf_oren_nayar_get_intensity(sd->N, I, omega_in, sc);
++	}
++	else {
++		*pdf = 0.0f;
++		return make_float3(0.0f, 0.0f, 0.0f);
++	}
++}
++
++__device float3 bsdf_oren_nayar_eval_transmit(const ShaderData *sd, const ShaderClosure *sc, const float3 I, const float3 omega_in, float *pdf)
++{
++	return make_float3(0.0f, 0.0f, 0.0f);
++}
++
++__device float bsdf_oren_nayar_albedo(const ShaderData *sd, const ShaderClosure *sc, const float3 I)
++{
++	return 1.0f;
++}
++
++__device int bsdf_oren_nayar_sample(const ShaderData *sd, const ShaderClosure *sc, float randu, float randv, float3 *eval, float3 *omega_in, float3 *domega_in_dx, float3 *domega_in_dy, float *pdf)
++{
++	sample_uniform_hemisphere(sd->N, randu, randv, omega_in, pdf);
++
++	if (dot(sd->Ng, *omega_in) > 0.0f) {
++		*eval = bsdf_oren_nayar_get_intensity(sd->N, sd->I, *omega_in, sc);
++
++#ifdef __RAY_DIFFERENTIALS__
++		// TODO: find a better approximation for the bounce
++		*domega_in_dx = (2.0f * dot(sd->N, sd->dI.dx)) * sd->N - sd->dI.dx;
++		*domega_in_dy = (2.0f * dot(sd->N, sd->dI.dy)) * sd->N - sd->dI.dy;
++		*domega_in_dx *= 125.0f;
++		*domega_in_dy *= 125.0f;
++#endif
++	}
++	else {
++		*pdf = 0.0f;
++		*eval = make_float3(0.0f, 0.0f, 0.0f);
++	}
++
++	return LABEL_REFLECT | LABEL_DIFFUSE;
++}
++
++
++CCL_NAMESPACE_END
++
++#endif /* __BSDF_OREN_NAYAR_H__ */
+Index: intern/cycles/kernel/svm/svm_closure.h
+===================================================================
+--- intern/cycles/kernel/svm/svm_closure.h	(revision 41087)
++++ intern/cycles/kernel/svm/svm_closure.h	(working copy)
+@@ -83,6 +83,12 @@
+ 			bsdf_diffuse_setup(sd, sc);
+ 			break;
+ 		}
++		case CLOSURE_BSDF_OREN_NAYAR_ID: {
++			ShaderClosure *sc = svm_node_closure_get(sd);
++			svm_node_closure_set_mix_weight(sc, mix_weight);
++			bsdf_oren_nayar_setup(sd, sc, param1);
++			break;
++		}
+ 		case CLOSURE_BSDF_TRANSLUCENT_ID: {
+ 			ShaderClosure *sc = svm_node_closure_get(sd);
+ 			svm_node_closure_set_mix_weight(sc, mix_weight);
+Index: intern/cycles/kernel/svm/svm_types.h
+===================================================================
+--- intern/cycles/kernel/svm/svm_types.h	(revision 41087)
++++ intern/cycles/kernel/svm/svm_types.h	(working copy)
+@@ -267,6 +267,7 @@
+ typedef enum ClosureType {
+ 	CLOSURE_BSDF_ID,
+ 	CLOSURE_BSDF_DIFFUSE_ID,
++	CLOSURE_BSDF_OREN_NAYAR_ID,
+ 	CLOSURE_BSDF_TRANSLUCENT_ID,
+ 	CLOSURE_BSDF_REFLECTION_ID,
+ 	CLOSURE_BSDF_REFRACTION_ID,
+Index: intern/cycles/kernel/svm/svm_bsdf.h
+===================================================================
+--- intern/cycles/kernel/svm/svm_bsdf.h	(revision 41087)
++++ intern/cycles/kernel/svm/svm_bsdf.h	(working copy)
+@@ -18,6 +18,7 @@
+ 
+ #include "bsdf_ashikhmin_velvet.h"
+ #include "bsdf_diffuse.h"
++#include "bsdf_oren_nayar.h"
+ #include "bsdf_microfacet.h"
+ #include "bsdf_reflection.h"
+ #include "bsdf_refraction.h"
+@@ -37,6 +38,9 @@
+ 		case CLOSURE_BSDF_DIFFUSE_ID:
+ 			label = bsdf_diffuse_sample(sd, sc, randu, randv, eval, omega_in, &domega_in->dx, &domega_in->dy, pdf);
+ 			break;
++		case CLOSURE_BSDF_OREN_NAYAR_ID:
++			label = bsdf_oren_nayar_sample(sd, sc, randu, randv, eval, omega_in, &domega_in->dx, &domega_in->dy, pdf);
++			break;
+ #ifdef __SVM__
+ 		case CLOSURE_BSDF_TRANSLUCENT_ID:
+ 			label = bsdf_translucent_sample(sd, sc, randu, randv, eval, omega_in, &domega_in->dx, &domega_in->dy, pdf);
+@@ -90,6 +94,9 @@
+ 			case CLOSURE_BSDF_DIFFUSE_ID:
+ 				eval = bsdf_diffuse_eval_reflect(sd, sc, sd->I, omega_in, pdf);
+ 				break;
++			case CLOSURE_BSDF_OREN_NAYAR_ID:
++				eval = bsdf_oren_nayar_eval_reflect(sd, sc, sd->I, omega_in, pdf);
++				break;
+ #ifdef __SVM__
+ 			case CLOSURE_BSDF_TRANSLUCENT_ID:
+ 				eval = bsdf_translucent_eval_reflect(sd, sc, sd->I, omega_in, pdf);
+@@ -136,6 +143,9 @@
+ 			case CLOSURE_BSDF_DIFFUSE_ID:
+ 				eval = bsdf_diffuse_eval_transmit(sd, sc, sd->I, omega_in, pdf);
+ 				break;
++			case CLOSURE_BSDF_OREN_NAYAR_ID:
++				eval = bsdf_oren_nayar_eval_transmit(sd, sc, sd->I, omega_in, pdf);
++				break;
+ #ifdef __SVM__
+ 			case CLOSURE_BSDF_TRANSLUCENT_ID:
+ 				eval = bsdf_translucent_eval_transmit(sd, sc, sd->I, omega_in, pdf);
+@@ -187,6 +197,9 @@
+ 		case CLOSURE_BSDF_DIFFUSE_ID:
+ 			bsdf_diffuse_blur(sc, roughness);
+ 			break;
++		case CLOSURE_BSDF_OREN_NAYAR_ID:
++			bsdf_oren_nayar_blur(sc, roughness);
++			break;
+ #ifdef __SVM__
+ 		case CLOSURE_BSDF_TRANSLUCENT_ID:
+ 			bsdf_translucent_blur(sc, roughness);
+Index: intern/cycles/kernel/CMakeLists.txt
+===================================================================
+--- intern/cycles/kernel/CMakeLists.txt	(revision 41087)
++++ intern/cycles/kernel/CMakeLists.txt	(working copy)
+@@ -33,6 +33,7 @@
+ 	svm/bsdf.h
+ 	svm/bsdf_ashikhmin_velvet.h
+ 	svm/bsdf_diffuse.h
++	svm/bsdf_oren_nayar.h
+ 	svm/bsdf_microfacet.h
+ 	svm/bsdf_reflection.h
+ 	svm/bsdf_refraction.h
+Index: intern/cycles/blender/blender_shader.cpp
+===================================================================
+--- intern/cycles/blender/blender_shader.cpp	(revision 41087)
++++ intern/cycles/blender/blender_shader.cpp	(working copy)
+@@ -218,6 +218,10 @@
+ 			node = new DiffuseBsdfNode();
+ 			break;
+ 		}
++		case BL::ShaderNode::type_BSDF_OREN_NAYAR: {
++			node = new OrenNayarBsdfNode();
++			break;
++		}
+ 		case BL::ShaderNode::type_BSDF_GLOSSY: {
+ 			BL::ShaderNodeBsdfGlossy b_glossy_node(b_node);
+ 			GlossyBsdfNode *glossy = new GlossyBsdfNode();
+Index: source/blender/blenkernel/BKE_node.h
+===================================================================
+--- source/blender/blenkernel/BKE_node.h	(revision 41087)
++++ source/blender/blenkernel/BKE_node.h	(working copy)
+@@ -495,6 +495,7 @@
+ #define SH_NODE_BLEND_WEIGHT			160
+ #define SH_NODE_VOLUME_TRANSPARENT		161
+ #define SH_NODE_VOLUME_ISOTROPIC		162
++#define SH_NODE_BSDF_OREN_NAYAR		163
+ 
+ /* custom defines options for Material node */
+ #define SH_NODE_MAT_DIFF   1
+Index: source/blender/blenkernel/intern/node.c
+===================================================================
+--- source/blender/blenkernel/intern/node.c	(revision 41087)
++++ source/blender/blenkernel/intern/node.c	(working copy)
+@@ -1897,6 +1897,7 @@
+ 
+ 	register_node_type_sh_background(ntypelist);
+ 	register_node_type_sh_bsdf_diffuse(ntypelist);
++	register_node_type_sh_bsdf_oren_nayar(ntypelist);
+ 	register_node_type_sh_bsdf_glossy(ntypelist);
+ 	register_node_type_sh_bsdf_glass(ntypelist);
+ 	//register_node_type_sh_bsdf_anisotropic(ntypelist);
+Index: source/blender/gpu/intern/gpu_shader_material.glsl
+===================================================================
+--- source/blender/gpu/intern/gpu_shader_material.glsl	(revision 41087)
++++ source/blender/gpu/intern/gpu_shader_material.glsl	(working copy)
+@@ -1853,6 +1853,46 @@
+ 	result = vec4(L*color.rgb, 1.0);
+ }
+ 
++void node_bsdf_oren_nayar(vec4 color, float sigma, vec3 n, out vec4 result)
++{
++	float FLT_MIN = 2e-38;
++	float A = 1.0 - 0.5 * (sigma * sigma) / (sigma * sigma + 0.33);
++	float B = 0.45 * (sigma * sigma) / (sigma * sigma + 0.09);
++
++	vec3 L = vec3(0.2);
++
++	vec3 v = vec3(0.0, 0.0, 1.0);
++	float cos_nv = max(dot(n, v), 0.0);
++	float sin_nv = sqrt(1.0 - cos_nv * cos_nv);
++	float tan_nv = sin_nv / (cos_nv + FLT_MIN);
++	vec3 av = normalize(v - cos_nv * n);
++
++	for(int i = 0; i < NUM_LIGHTS; i++) {
++		vec3 l = gl_LightSource[i].position.xyz;
++		float cos_nl = max(dot(n, l), 0.0);
++		float sin_nl = sqrt(1.0 - cos_nl * cos_nl);
++		vec3 al = normalize(l - cos_nl * n);
++
++		float t = max(dot(al, av), 0.0);
++
++		float sin_a, tan_b;
++		if(cos_nl < cos_nv) {
++			sin_a = sin_nl;
++			tan_b = tan_nv;
++		}
++		else {
++			sin_a = sin_nv;
++			tan_b = sin_nl / (cos_nl + FLT_MIN);
++		}
++
++		float bsdf = cos_nl * (A + B * t * sin_a * tan_b);
++
++		L += gl_LightSource[i].diffuse.rgb * bsdf;
++	}
++
++	result = vec4(L * color.rgb, 1.0);
++}
++
+ void node_bsdf_glossy(vec4 color, float roughness, vec3 N, vec3 I, out vec4 result)
+ {
+ 	vec3 L = vec3(0.0);
+Index: source/blender/gpu/intern/gpu_shader_material.glsl.c
+===================================================================
+--- source/blender/gpu/intern/gpu_shader_material.glsl.c	(revision 41087)
++++ source/blender/gpu/intern/gpu_shader_material.glsl.c	(working copy)
+@@ -1,6 +1,6 @@
+ /* DataToC output of file <gpu_shader_material_glsl> */
+ 
+-int datatoc_gpu_shader_material_glsl_size= 46289;
++int datatoc_gpu_shader_material_glsl_size= 47281;
+ char datatoc_gpu_shader_material_glsl[]= {
+  10,102,108,111, 97,116, 32,101,120,112, 95, 98,108,101,110,100,101,
+ 114, 40,102,108,111, 97,116, 32,102, 41, 10,123, 10,  9,114,101,116,117,114,110, 32,112,111,119, 40, 50, 46, 55, 49, 56, 50, 56,
+@@ -1286,6 +1286,37 @@
+  32,108,105,103,104,116, 95,112,111,115,105,116,105,111,110, 41, 44, 32, 48, 46, 48, 41, 59, 10,  9,  9, 76, 32, 43, 61, 32,108,
+ 105,103,104,116, 95,100,105,102,102,117,115,101, 42, 98,115,100,102, 59, 10,  9,125, 10, 10,  9,114,101,115,117,108,116, 32, 61,
+  32,118,101, 99, 52, 40, 76, 42, 99,111,108,111,114, 46,114,103, 98, 44, 32, 49, 46, 48, 41, 59, 10,125, 10, 10,118,111,105,100,
++ 32,110,111,100,101, 95, 98,115,100,102, 95,111,114,101,110, 95,110, 97,121, 97,114, 40,118,101, 99, 52, 32, 99,111,108,111,114,
++ 44, 32,102,108,111, 97,116, 32,115,105,103,109, 97, 44, 32,118,101, 99, 51, 32,110, 44, 32,111,117,116, 32,118,101, 99, 52, 32,
++114,101,115,117,108,116, 41, 10,123, 10,  9,102,108,111, 97,116, 32, 70, 76, 84, 95, 77, 73, 78, 32, 61, 32, 50,101, 45, 51, 56,
++ 59, 10,  9,102,108,111, 97,116, 32, 65, 32, 61, 32, 49, 46, 48, 32, 45, 32, 48, 46, 53, 32, 42, 32, 40,115,105,103,109, 97, 32,
++ 42, 32,115,105,103,109, 97, 41, 32, 47, 32, 40,115,105,103,109, 97, 32, 42, 32,115,105,103,109, 97, 32, 43, 32, 48, 46, 51, 51,
++ 41, 59, 10,  9,102,108,111, 97,116, 32, 66, 32, 61, 32, 48, 46, 52, 53, 32, 42, 32, 40,115,105,103,109, 97, 32, 42, 32,115,105,
++103,109, 97, 41, 32, 47, 32, 40,115,105,103,109, 97, 32, 42, 32,115,105,103,109, 97, 32, 43, 32, 48, 46, 48, 57, 41, 59, 10, 10,
++  9,118,101, 99, 51, 32, 76, 32, 61, 32,118,101, 99, 51, 40, 48, 46, 50, 41, 59, 10, 10,  9,118,101, 99, 51, 32,118, 32, 61, 32,
++118,101, 99, 51, 40, 48, 46, 48, 44, 32, 48, 46, 48, 44, 32, 49, 46, 48, 41, 59, 10,  9,102,108,111, 97,116, 32, 99,111,115, 95,
++110,118, 32, 61, 32,109, 97,120, 40,100,111,116, 40,110, 44, 32,118, 41, 44, 32, 48, 46, 48, 41, 59, 10,  9,102,108,111, 97,116,
++ 32,115,105,110, 95,110,118, 32, 61, 32,115,113,114,116, 40, 49, 46, 48, 32, 45, 32, 99,111,115, 95,110,118, 32, 42, 32, 99,111,
++115, 95,110,118, 41, 59, 10,  9,102,108,111, 97,116, 32,116, 97,110, 95,110,118, 32, 61, 32,115,105,110, 95,110,118, 32, 47, 32,
++ 40, 99,111,115, 95,110,118, 32, 43, 32, 70, 76, 84, 95, 77, 73, 78, 41, 59, 10,  9,118,101, 99, 51, 32, 97,118, 32, 61, 32,110,
++111,114,109, 97,108,105,122,101, 40,118, 32, 45, 32, 99,111,115, 95,110,118, 32, 42, 32,110, 41, 59, 10, 10,  9,102,111,114, 40,
++105,110,116, 32,105, 32, 61, 32, 48, 59, 32,105, 32, 60, 32, 78, 85, 77, 95, 76, 73, 71, 72, 84, 83, 59, 32,105, 43, 43, 41, 32,
++123, 10,  9,  9,118,101, 99, 51, 32,108, 32, 61, 32,103,108, 95, 76,105,103,104,116, 83,111,117,114, 99,101, 91,105, 93, 46,112,
++111,115,105,116,105,111,110, 46,120,121,122, 59, 10,  9,  9,102,108,111, 97,116, 32, 99,111,115, 95,110,108, 32, 61, 32,109, 97,
++120, 40,100,111,116, 40,110, 44, 32,108, 41, 44, 32, 48, 46, 48, 41, 59, 10,  9,  9,102,108,111, 97,116, 32,115,105,110, 95,110,
++108, 32, 61, 32,115,113,114,116, 40, 49, 46, 48, 32, 45, 32, 99,111,115, 95,110,108, 32, 42, 32, 99,111,115, 95,110,108, 41, 59,
++ 10,  9,  9,118,101, 99, 51, 32, 97,108, 32, 61, 32,110,111,114,109, 97,108,105,122,101, 40,108, 32, 45, 32, 99,111,115, 95,110,
++108, 32, 42, 32,110, 41, 59, 10, 10,  9,  9,102,108,111, 97,116, 32,116, 32, 61, 32,109, 97,120, 40,100,111,116, 40, 97,108, 44,
++ 32, 97,118, 41, 44, 32, 48, 46, 48, 41, 59, 10, 10,  9,  9,102,108,111, 97,116, 32,115,105,110, 95, 97, 44, 32,116, 97,110, 95,
++ 98, 59, 10,  9,  9,105,102, 40, 99,111,115, 95,110,108, 32, 60, 32, 99,111,115, 95,110,118, 41, 32,123, 10,  9,  9,  9,115,105,
++110, 95, 97, 32, 61, 32,115,105,110, 95,110,108, 59, 10,  9,  9,  9,116, 97,110, 95, 98, 32, 61, 32,116, 97,110, 95,110,118, 59,
++ 10,  9,  9,125, 10,  9,  9,101,108,115,101, 32,123, 10,  9,  9,  9,115,105,110, 95, 97, 32, 61, 32,115,105,110, 95,110,118, 59,
++ 10,  9,  9,  9,116, 97,110, 95, 98, 32, 61, 32,115,105,110, 95,110,108, 32, 47, 32, 40, 99,111,115, 95,110,108, 32, 43, 32, 70,
++ 76, 84, 95, 77, 73, 78, 41, 59, 10,  9,  9,125, 10, 10,  9,  9,102,108,111, 97,116, 32, 98,115,100,102, 32, 61, 32, 99,111,115,
++ 95,110,108, 32, 42, 32, 40, 65, 32, 43, 32, 66, 32, 42, 32,116, 32, 42, 32,115,105,110, 95, 97, 32, 42, 32,116, 97,110, 95, 98,
++ 41, 59, 10, 10,  9,  9, 76, 32, 43, 61, 32,103,108, 95, 76,105,103,104,116, 83,111,117,114, 99,101, 91,105, 93, 46,100,105,102,
++102,117,115,101, 46,114,103, 98, 32, 42, 32, 98,115,100,102, 59, 10,  9,125, 10, 10,  9,114,101,115,117,108,116, 32, 61, 32,118,
++101, 99, 52, 40, 76, 32, 42, 32, 99,111,108,111,114, 46,114,103, 98, 44, 32, 49, 46, 48, 41, 59, 10,125, 10, 10,118,111,105,100,
+  32,110,111,100,101, 95, 98,115,100,102, 95,103,108,111,115,115,121, 40,118,101, 99, 52, 32, 99,111,108,111,114, 44, 32,102,108,
+ 111, 97,116, 32,114,111,117,103,104,110,101,115,115, 44, 32,118,101, 99, 51, 32, 78, 44, 32,118,101, 99, 51, 32, 73, 44, 32,111,
+ 117,116, 32,118,101, 99, 52, 32,114,101,115,117,108,116, 41, 10,123, 10,  9,118,101, 99, 51, 32, 76, 32, 61, 32,118,101, 99, 51,
+Index: source/blender/makesrna/intern/rna_nodetree_types.h
+===================================================================
+--- source/blender/makesrna/intern/rna_nodetree_types.h	(revision 41087)
++++ source/blender/makesrna/intern/rna_nodetree_types.h	(working copy)
+@@ -69,6 +69,7 @@
+ DefNode( ShaderNode,     SH_NODE_HOLDOUT,            0,                      "HOLDOUT",            Holdout, "Holdout", "")
+ DefNode( ShaderNode,     SH_NODE_BSDF_ANISOTROPIC,   0,                      "BSDF_ANISOTROPIC",   BsdfAnisotropic, "Bsdf Anisotropic", "")
+ DefNode( ShaderNode,     SH_NODE_BSDF_DIFFUSE,       0,                      "BSDF_DIFFUSE",       BsdfDiffuse, "Diffuse Bsdf", "")
++DefNode( ShaderNode,     SH_NODE_BSDF_OREN_NAYAR,    0,                      "BSDF_OREN_NAYAR",    BsdfOrenNayar, "Oren-Nayar Bsdf", "")
+ DefNode( ShaderNode,     SH_NODE_BSDF_GLOSSY,        def_glossy,             "BSDF_GLOSSY",        BsdfGlossy, "Glossy Bsdf", "")
+ DefNode( ShaderNode,     SH_NODE_BSDF_GLASS,         def_glossy,             "BSDF_GLASS",         BsdfGlass, "Glass Bsdf", "")
+ DefNode( ShaderNode,     SH_NODE_BSDF_TRANSLUCENT,   0,                      "BSDF_TRANSLUCENT",   BsdfTranslucent, "Translucent Bsdf", "")
+Index: source/blender/nodes/shader/nodes/node_shader_bsdf_oren_nayar.c
+===================================================================
+--- source/blender/nodes/shader/nodes/node_shader_bsdf_oren_nayar.c	(revision 0)
++++ source/blender/nodes/shader/nodes/node_shader_bsdf_oren_nayar.c	(revision 0)
+@@ -0,0 +1,70 @@
++/**
++ * $Id: node_shader_output.c 32517 2010-10-16 14:32:17Z campbellbarton $
++ *
++ * ***** BEGIN GPL LICENSE BLOCK *****
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version. 
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
++ *
++ * The Original Code is Copyright (C) 2005 Blender Foundation.
++ * All rights reserved.
++ *
++ * The Original Code is: all of this file.
++ *
++ * Contributor(s): none yet.
++ *
++ * ***** END GPL LICENSE BLOCK *****
++ */
++
++#include "../node_shader_util.h"
++
++/* **************** OUTPUT ******************** */
++
++static bNodeSocketTemplate sh_node_bsdf_oren_nayar_in[]= {
++	{	SOCK_RGBA, 1, "Color",		0.8f, 0.8f, 0.8f, 1.0f, 0.0f, 1.0f},
++	{	SOCK_FLOAT, 1, "Roughness",	0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
++	{	-1, 0, ""	}
++};
++
++static bNodeSocketTemplate sh_node_bsdf_oren_nayar_out[]= {
++	{	SOCK_SHADER, 0, "BSDF"},
++	{	-1, 0, ""	}
++};
++
++static void node_shader_exec_bsdf_oren_nayar(void *UNUSED(data), bNode *UNUSED(node), bNodeStack **UNUSED(in), bNodeStack **UNUSED(out))
++{
++}
++
++static int node_shader_gpu_bsdf_oren_nayar(GPUMaterial *mat, bNode *UNUSED(node), GPUNodeStack *in, GPUNodeStack *out)
++{
++	return GPU_stack_link(mat, "node_bsdf_oren_nayar", in, out, GPU_builtin(GPU_VIEW_NORMAL));
++}
++
++/* node type definition */
++void register_node_type_sh_bsdf_oren_nayar(ListBase *lb)
++{
++	static bNodeType ntype;
++
++	node_type_base(&ntype, SH_NODE_BSDF_OREN_NAYAR, "Oren-Nayar BSDF", NODE_CLASS_SHADER, 0);
++	node_type_compatibility(&ntype, NODE_NEW_SHADING);
++	node_type_socket_templates(&ntype, sh_node_bsdf_oren_nayar_in, sh_node_bsdf_oren_nayar_out);
++	node_type_size(&ntype, 150, 60, 200);
++	node_type_init(&ntype, NULL);
++	node_type_storage(&ntype, "", NULL, NULL);
++	node_type_exec(&ntype, node_shader_exec_bsdf_oren_nayar);
++	node_type_gpu(&ntype, node_shader_gpu_bsdf_oren_nayar);
++
++	nodeRegisterType(lb, &ntype);
++};
++
+Index: source/blender/nodes/NOD_shader.h
+===================================================================
+--- source/blender/nodes/NOD_shader.h	(revision 41087)
++++ source/blender/nodes/NOD_shader.h	(working copy)
+@@ -82,6 +82,7 @@
+ 
+ void register_node_type_sh_background(ListBase *lb);
+ void register_node_type_sh_bsdf_diffuse(ListBase *lb);
++void register_node_type_sh_bsdf_oren_nayar(ListBase *lb);
+ void register_node_type_sh_bsdf_glossy(ListBase *lb);
+ void register_node_type_sh_bsdf_glass(ListBase *lb);
+ void register_node_type_sh_bsdf_anisotropic(ListBase *lb);
+Index: source/blender/nodes/CMakeLists.txt
+===================================================================
+--- source/blender/nodes/CMakeLists.txt	(revision 41087)
++++ source/blender/nodes/CMakeLists.txt	(working copy)
+@@ -128,6 +128,7 @@
+ 	shader/nodes/node_shader_background.c
+ 	shader/nodes/node_shader_bsdf_anisotropic.c
+ 	shader/nodes/node_shader_bsdf_diffuse.c
++	shader/nodes/node_shader_bsdf_oren_nayar.c
+ 	shader/nodes/node_shader_bsdf_glossy.c
+ 	shader/nodes/node_shader_bsdf_glass.c
+ 	shader/nodes/node_shader_bsdf_translucent.c

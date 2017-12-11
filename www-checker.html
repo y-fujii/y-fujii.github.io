@@ -1,0 +1,48 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="en">
+    <head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>wwwChecker</title>
+		<link rel="stylesheet" href="/default.css">
+    </head>
+<body>
+
+<h1>wwwChecker</h1>
+
+<h2>Download</h2>
+<ul>
+	<li><a href="http://bitbucket.org/ysfujii/wwwchecker3">Python3 branch</a></li>
+</ul>
+
+<h2>What is this?</h2>
+<p>Web update checker.</p>
+
+<h2>Features</h2>
+<ul>
+	<li>Simple CLI application that generates a HTML file which shows a list of update information.</li>
+	<li>Suppress false detection caused by dynamical pages (e.g. Ads) without any black-listed words.</li>
+	<li>Extract updated parts of contents.</li>
+	<li>Reduce network traffic to use requests with <code>If-since-modified</code> and <code>Accept-encoding: gzip</code> headers, check <code>Last-modified</code> and <code>Content-length</code> headers before downloading contents.</li>
+	<li>N-parallel retrieving.</li>
+	<li>Depend on Python only. Cross platform.</li>
+</ul>
+
+<h2>Method</h2>
+<ol>
+	<li>Flatten HTML DOM tree to the sequence of paragraphs.</li>
+	<li>Apply diff algorithm to detect inserted/deleted paragraphs.</li>
+	<li>Filter out irrelevant changes, which uses a linear combination of <a href="http://en.wikipedia.org/wiki/Standard_score">standard scores</a> of (#[anchored text] / #[whole text]) and (log #[whole text]) per pages ("#[X]" means "the length of X").</li>
+</ol>
+
+<h2>Usage</h2>
+<ol>
+	<li>Please write URIs one per line in <code>~/.www-list</code> file.</li>
+	<li><code>python /path/to/wwwChecker</code></li>
+	<li>A Web browser will be automatically started on finished. If not, please open a <code>~/.www-check.html</code> manually.</li>
+</ol>
+
+<p><a href="../"><code>cd ../</code></a></p>
+<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

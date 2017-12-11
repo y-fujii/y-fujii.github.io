@@ -1,0 +1,81 @@
+diff --git a/src/cmake/platform.cmake b/src/cmake/platform.cmake
+index b290d23..ad4b4be 100644
+--- a/src/cmake/platform.cmake
++++ b/src/cmake/platform.cmake
+@@ -15,6 +15,12 @@ if (UNIX)
+             set (CXXFLAGS "${CXXFLAGS} -DLINUX64")
+         endif ()
+     endif ()
++    if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
++        set (platform "freebsd")
++        if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64")
++            set (platform "freebsd64")
++        endif ()
++    endif ()
+     if (APPLE)
+         message (STATUS "Apple!")
+         set (platform "macosx")
+diff --git a/src/make/detectplatform.mk b/src/make/detectplatform.mk
+index bc29f4b..0dacbdf 100644
+--- a/src/make/detectplatform.mk
++++ b/src/make/detectplatform.mk
+@@ -25,7 +25,9 @@ ifneq (${hw},x86)
+   ifneq (${hw},x86_64)
+     ifneq (${hw},i386)
+       ifneq (${hw},i686)
+-        $(error "ERROR: Unknown hardware architecture")
++        ifneq (${hw},amd64)
++          $(error "ERROR: Unknown hardware architecture")
++		endif
+       endif
+     endif
+   endif
+@@ -59,6 +61,14 @@ ifeq (${platform},unknown)
+     platform := macosx
+   endif
+ 
++  # FreeBSD
++  ifeq (${uname},freebsd)
++    platform := freebsd
++    ifeq (${hw},amd64)
++      platform := freebsd64
++    endif
++  endif
++
+   # If we haven't been able to determine the platform from uname, use
+   # whatever is in $ARCH, if it's set.
+   ifeq (${platform},unknown)
+diff --git a/src/ptex.imageio/ptex/PtexPlatform.h b/src/ptex.imageio/ptex/PtexPlatform.h
+index b2959f5..30e3859 100644
+--- a/src/ptex.imageio/ptex/PtexPlatform.h
++++ b/src/ptex.imageio/ptex/PtexPlatform.h
+@@ -60,7 +60,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ 
+ // linux/unix/posix
+ #include <stdlib.h>
++#if !defined( __FreeBSD__ )
+ #include <alloca.h>
++#endif
+ #include <string.h>
+ #include <pthread.h>
+ // OS for spinlock
+@@ -82,15 +84,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ typedef __int64 FilePos;
+ #define fseeko _fseeki64
+ #define ftello _ftelli64
++#else
++typedef off_t FilePos;
++#endif
+ 
++#if defined(WINDOWS) || defined(__FreeBSD__)
+ inline double log2(double x) {
+     return log(x) * 1.4426950408889634; 
+ }
+-
+-#else
+-typedef off_t FilePos;
+ #endif
+-    
+ 
+ namespace PtexInternal {
+ 

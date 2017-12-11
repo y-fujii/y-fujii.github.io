@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+		<title>Play with Ricoh THETA w/o Smartphones</title>
+        <link rel="stylesheet" href="./default.css">
+    </head>
+<body>
+
+<h1>Play with Ricoh THETA w/o Smartphones</h1>
+<p>TL;DR: Using <a href="http://www.gphoto.org/proj/gphoto2/">gphoto2</a> with PTP/IP seems to give us a full control of <a href="https://theta360.com/">Ricoh THETA</a> without proprietary softwares nor hardwares. <a href="https://theta360.com/">Ricoh THETA</a> (and also <a href="http://www.gphoto.org/proj/gphoto2/">gphoto2</a>) are awesome.</p>
+
+<h2>Detailed explanation</h2>
+<p>We can connect a THETA with a PC through a USB or a Wireless LAN. Both of them use <a href="http://en.wikipedia.org/wiki/Picture_Transfer_Protocol">PTP</a>, but seem to have some difference: for instance, we cannot set an exposure compensation value through a USB. Connecting through a Wireless LAN gives more control.</p>
+
+<h3>Connect a THETA through a Wireless LAN</h3>
+<p>THETA behaves as a Wireless LAN access point. Please connect it. That's all. Now you can do anything by using <a href="http://www.gphoto.org/proj/gphoto2/">gphoto2</a> with PTP/IP mode:</p>
+<pre>
+$ # Create a command alias.
+$ theta() { <a href="http://www.gphoto.org/proj/gphoto2/">gphoto2</a> --port=ptpip:192.168.1.1 "--camera=PTP/IP Camera" "$@" }
+
+$ # Set date/time in localtime.
+$ # Because My THETA is a Japanese version, add JST+09 == +32400 sec.
+$ theta --set-config datetime=$(($(date +%s) + 32400))
+
+$ # Set an exposure compensation to -0.3EV.
+$ theta --set-config exposurecompensation=7
+
+$ # Take a picture.
+$ theta --trigger-capture
+
+$ # Retrieve all files (I recommended to do this with USB connection
+$ # because of slowness).
+$ theta --get-all-files
+
+$ ...
+</pre>
+<p>The pictures can be seen by the viewers that support <a href="http://en.wikipedia.org/wiki/Equirectangular_projection">equirectangular projected</a> images.</p>
+<p>THETA has a compass and an accelerometer. The 3-DoF orientation data are stored in the EXIF, whose format has been <a href="http://d.hatena.ne.jp/xanxys/20131110/1384094832">reverse-engineered by @xanxys_</a>.</p>
+
+<h3>Configure properties</h3>
+<pre>
+/main/settings/datetime
+/main/status/serialnumber
+/main/status/manufacturer
+/main/status/cameramodel
+/main/status/deviceversion
+/main/status/vendorextension
+/main/status/batterylevel
+/main/capturesettings/exposurecompensation
+     0 -&gt; +2.0EV
+     1 -&gt; +1.7EV
+     2 -&gt; +1.3EV
+     3 -&gt; +1.0EV
+     4 -&gt; +0.7EV
+     5 -&gt; +0.3EV
+     6 -&gt;  0.0EV
+     7 -&gt; -0.3EV
+     8 -&gt; -0.7EV
+     9 -&gt; -1.0EV
+    10 -&gt; -1.3EV
+    11 -&gt; -1.7EV
+    12 -&gt; -2.0EV
+/main/other/5001 same as /main/status/batterylevel
+/main/other/5010 same as /main/capturesettings/exposurecompensation
+/main/other/5011 same as /main/settings/datetime
+/main/other/502c volume
+/main/other/d006 ?? type: text
+/main/other/d801 ?? type: text
+/main/other/d802 ?? (seems not to affect images)
+/main/other/d803 time to sleep, in seconds
+/main/other/d805 Wi-Fi SSID
+/main/other/d806 Wi-Fi password
+/main/other/d807 Wi-Fi channel
+</pre>
+
+<h2>References</h2>
+<ul>
+	<li><a lang="ja" href="http://mobilehackerz.jp/contents/Review/RICOH_THETA">RICOH THETA HACKS! - 360度全天球カメラ RICOH THETAを徹底的にいじくりまわす！ (mobilehackerz.jp)</a></li>
+<li><a lang="ja" href="http://d.hatena.ne.jp/xanxys/20131110/1384094832">Ricoh THETAのEXIF (回転を読むためのPythonコード付き) (hatena.ne.jp/xanxys)</a></li>
+	<li><a lang="ja" href="http://toro.2ch.net/test/read.cgi/dcamera/1378990945/">RICOH THETA (2ch.net)</a></li>
+</ul>
+
+<p><a href="../"><code>cd ../</code></a></p>
+<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

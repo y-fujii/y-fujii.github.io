@@ -1,0 +1,284 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="en">
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>A tiny improvement of Oren-Nayar reflectance model</title>
+		<script defer type="text/javascript"
+			src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_SVG.js"
+		></script>
+		<link rel="stylesheet" href="/default.css">
+		<style type="text/css">
+			h1 {
+				text-align: center;
+			}
+			.author {
+				text-align: center;
+				font-size: small;
+			}
+			object {
+				width:  13.3em;
+				height: 13.3em;
+			}
+		</style>
+	</head>
+<body>
+
+<script type="math/tex">
+	\newcommand{\block}[2]{\begin{#1} #2 \end{#1}}
+	\newcommand{\D}{\mathrm{d}}
+	\renewcommand{\(}{\left(}
+	\renewcommand{\)}{\right)}
+</script>
+
+<h1>A tiny improvement of Oren-Nayar reflectance model</h1>
+
+<p class="author">Yasuhiro Fujii</p>
+
+<h2>Introduction</h2>
+
+<p>M. Oren and S. K. Nayar have proposed a reflectance model of rough diffuse
+surfaces and two approximate functions (We call them "full O-N" and
+"qualitative O-N" respectively in this article) in 1993
+<a href="http://www.cs.columbia.edu/CAVE/projects/oren/">[link]</a>
+<a href="http://www1.cs.columbia.edu/CAVE/publications/pdfs/Oren_SIGGRAPH94.pdf">[link]</a>
+. Full O-N approximate the model very well, but it is complex and has many
+computationally-expensive functions. Qualitative O-N, which is widely used in
+CG community, is simple but it has some problems. For example:</p>
+
+<ul>
+	<li>Sometimes undesired dark rings are observed on spheres
+	<a href="#images">[img]</a>. These are sometimes highly visible in animated
+	scenes with moving lights.</li>
+	<li>Fall back to the Lambert model when \( L \cdot V \le 0 \).</li>
+</ul>
+
+<p>I introduce a slightly modified version of the qualitative O-N. It
+features:</p>
+
+<ul>
+	<li>Simple.</li>
+	<li>The complexity is the same as qualitative O-N. No sin, cos, arccos, nor
+	sqrt are required. It contains only 3 inner products and 1 scalar
+	division.</li>
+	<li>Very similar result as full O-N.</li>
+</ul>
+
+<h2>Notation</h2>
+
+<div class="math">\[
+\block{align*}{
+	\vec{L} &amp;= (\theta_i, \phi_i) &amp;: &amp;\text{ light source direction}
+	\\
+	\vec{V} &amp;= (\theta_r, \phi_r) &amp;: &amp;\text{ viewing direction}
+	\\
+	\vec{N} &amp; &amp;: &amp;\text{ surface normal}
+}
+\]</div>
+
+<div class="math">\[
+\block{align*}{
+	\phi &amp;:= \phi_r - \phi_i
+}
+\]</div>
+
+<p>We use &theta; to denote polar angles and &phi; to denote azimuth angles on
+the surfaces.</p>
+
+<h2>Proposed formula</h2>
+
+<p>Using a vector notation, proposed formula is described as follows.</p>
+
+<div class="math">\[
+\block{align*}{
+	s &amp;= L \cdot V - (N \cdot L) (N \cdot V)
+	\\
+	t &amp;= \block{cases}{
+		1 &amp; \text{if } s \le 0
+		\\
+		\max(N \cdot L, N \cdot V) &amp; \textrm{if } s \gt 0
+	}
+}
+\]</div>
+
+<div class="math">\[
+\block{align*}{
+	L_\text{iON}(N, L, V) &amp;= \rho \ (N \cdot L) \( A + B \frac{s}{t} \)
+}
+\]</div>
+
+<p>A and B are the constant numbers which depend on the roughness of the
+surfaces. Following formula can be used to match the result with full O-N:</p>
+
+<div class="math">\[
+\block{align*}{
+	A &amp;= \frac{1}{\pi} \left( 1 - 0.5 \frac{\sigma^2}{\sigma^2 + 0.33} + 0.17 \rho \frac{\sigma^2}{\sigma^2 + 0.13} \right)
+	\\
+	B &amp;= \frac{1}{\pi} \left( 0.45 \frac{\sigma^2}{\sigma^2 + 0.09} \right)
+}
+\]</div>
+
+<p>It violates energy conservation law, \( \int \D \omega_i L \le 1 \) when
+\( \rho \gt 0.97 \). However, full O-N also has this problem.</p>
+
+<p>Proposed formula simply consists of a linear combination of the diffuse term
+and the non-diffuse term, so I propose a artificial, but useful
+parameterization of &sigma;.</p>
+
+<div class="math">\[
+\block{align*}{
+	0 \le \sigma' \le 1
+}
+\]</div>
+
+<div class="math">\[
+\block{align*}{
+	A &amp;= \frac{1}{\pi + \left( \frac{\pi}{2} - \frac{2}{3} \right) \sigma'}
+	\\
+	B &amp;= \frac{\sigma'}{\pi + \left( \frac{\pi}{2} - \frac{2}{3} \right) \sigma'}
+}
+\]</div>
+
+<p>where &sigma;' has a simple meaning: mixing ratio of (non-diffuse term) /
+(diffuse term). Normalization factor is determined to keep overall intensity at
+\( V \cdot N = 0 \), which is a maximal point of non-diffuse term, therefore it
+never violates energy conservation law.</p>
+
+<h2>Result</h2>
+
+<p>Comparison between full O-N (blue), qualitative O-N (green) and proposed
+(red) at \( \rho = 0.8, \sigma = \pi / 4 \).</p>
+
+<table>
+	<tr>
+		<td><object data="./img/oren-nayar/00.svg">00.svg</object></td>
+		<td><object data="./img/oren-nayar/10.svg">10.svg</object></td>
+		<td><object data="./img/oren-nayar/20.svg">20.svg</object></td>
+	</tr>
+	<tr>
+		<td><object data="./img/oren-nayar/01.svg">01.svg</object></td>
+		<td><object data="./img/oren-nayar/11.svg">11.svg</object></td>
+		<td><object data="./img/oren-nayar/21.svg">21.svg</object></td>
+	</tr>
+	<tr>
+		<td><object data="./img/oren-nayar/02.svg">02.svg</object></td>
+		<td><object data="./img/oren-nayar/12.svg">12.svg</object></td>
+		<td><object data="./img/oren-nayar/22.svg">22.svg</object></td>
+	</tr>
+</table>
+
+<p>The worst case is \(
+	\theta_i \simeq \frac{\pi}{2} \wedge \theta_r \simeq
+	\frac{\pi}{2} \wedge \phi
+	\simeq \frac{\pi}{2}
+\). But suppose that the directions of the surfaces are uniformly distributed
+in a scene, the area of each surface on the screen is proportional to \( \cos
+\theta_i \cos \theta_r \). So the worst case occupies relatively small
+region.</p>
+
+<h2>Analysis</h2>
+
+<p>We can evaluate \( \cos \phi \) by projecting N and V on the surface.</p>
+
+<div class="math">\[
+\block{align*}{
+	\cos \phi &amp;=
+		\frac{L - (N \cdot L) N}{\left| L - (N \cdot L) N \right|} \cdot
+		\frac{V - (N \cdot V) N}{\left| V - (N \cdot V) N \right|}
+	\\
+	&amp;= \frac{L \cdot V - (N \cdot L) (N \cdot V)}{\sin \theta_i \sin \theta_r}
+}
+\]</div>
+
+<p>Therefore, proposed formula is described in spherical coordinates as
+follows:</p>
+
+<div class="math">\[
+\block{align*}{
+	s &amp;= \cos \phi \sin \theta_i \sin \theta_r
+	\\
+	t^{-1} &amp;= \block{cases}{
+		1 &amp; \text{if } s \le 0
+		\\
+		1 / \max( \cos \theta_r, \cos \theta_i ) &amp; \text{if } s \gt 0
+	}
+}
+\]</div>
+
+<div class="math">\[
+\block{align*}{
+	L_\text{iON}(\theta_r, \theta_i, \phi) &amp;= \rho \cos \theta_i (A + B s t^{-1})
+}
+\]</div>
+
+<p>On the other hand, qualitative O-N can be written as the following form:</p>
+
+<div class="math">\[
+\block{align*}{
+	s &amp;= \cos \phi \sin \theta_i \sin \theta_r
+	\\
+	t^{-1} &amp;= \block{cases}{
+		0 &amp; \text{if } s \le 0
+		\\
+		1 / \max( \cos \theta_r, \cos \theta_i ) &amp; \text{if } s \gt 0
+	}
+}
+\]</div>
+
+<div class="math">\[
+\block{align*}{
+	L_\text{qON}(\theta_r, \theta_i, \phi) &amp;= \rho \cos \theta_i (A' + B' s t^{-1})
+}
+\]</div>
+
+<p>As you see, proposed formula is very similar to qualitative O-N.</p>
+
+<p>Dark rings on spheres are appeared on the borders of \( s = 0 \).
+Qualitative O-N has 1st-order discontinuity at \( \theta_r = 0 \), wheareas
+proposed formula has 3rd-order discontinuity. Dark rings are completely
+disappeared on proposed formula.</p>
+
+<p>s is always non-positive when \( L \cdot V \le 0 \) (see the definition of s
+in vector notation), hence qualitative O-N falls back to Lambertian even if
+\( \sigma \ne 0 \), whereas proposed formula doesn't.</p>
+
+<p>\( L_\text{iON} \) satisfy the following physical requirements.</p>
+
+<div class="math">\[
+\block{align*}{
+	L_\text{iON}(\theta_r, \theta_i, \phi) \cos \theta_r &amp;= L_\text{iON}(\theta_i, \theta_r, \phi) \cos \theta_i &amp;&amp; \text{(Helmholtz reciprocity)}
+	\\
+	L_\text{iON}(\theta_r, \theta_i, \phi ; \sigma = 0) &amp;= \frac{\rho}{\pi} \cos \theta_i &amp;&amp; \text{(Equivalent to Lambertian when $ \sigma = 0 $)}
+	\\
+	\int_0^{2 \pi} \D \phi \int_0^{\frac{\pi}{2}} \D \theta_i \sin \theta_i &amp;{} L_\text{iON}(\theta_r, \theta_i, \phi) \le 1 &amp;&amp; \text{(Energy conservation)}
+}
+\]</div>
+
+<p>Moreover, when the domains of \( (\theta, \phi) \) are extended to negative
+values, \( L_\text{iON}( \theta_r, \theta_i, \phi ) \) satisfy the following
+equalities without any modification.</p>
+
+<div class="math">\[
+\block{align*}{
+	L_\text{iON}(\theta_r, \theta_i, \phi) &amp;= L_\text{iON}(\theta_r, \theta_i, -\phi)
+	\\
+	L_\text{iON}(-\theta_r, \theta_i, \phi) &amp;= L_\text{iON}(\theta_r, \theta_i, \phi \pm \pi)
+	\\
+	L_\text{iON}(\theta_r, -\theta_i, \phi) &amp;= L_\text{iON}(\theta_r, \theta_i, \phi \pm \pi)
+}
+\]</div>
+
+<p>It may imply that the combinations of trigonometric functions used in this formula seem to be natural.</p>
+
+<h2 id="images">Rendered images</h2>
+<p>I implemented proposed formula to <a href="http://blender.org/">Blender cycles</a>.</p>
+<p class="figure"><img alt="oren-nayar-cmp.png" src="/img/oren-nayar-cmp.png"></p>
+<p class="figure"><img alt="oren-nayar-diff.png" src="/img/oren-nayar-diff.png"></p>
+<p>Comparison between qualitative O-N and proposed formula at \( A = B \ ( \sigma' = 1.0 ) \) .</p>
+<p class="figure"><img alt="oren-nayar-monkey.gif" src="/img/oren-nayar-monkey.gif"></p>
+
+
+<p><a href="../">cd ..</a></p>
+<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>

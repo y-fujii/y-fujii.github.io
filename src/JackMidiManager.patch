@@ -1,0 +1,318 @@
+--- /dev/null
++++ AriaSrc-1.2.2/Src/Midi/Players/Jack/JackMidiManager.cpp
+@@ -0,0 +1,315 @@
++// by y.fujii <y-fujii@mimosa-pudica.net>, public domain
++
++#if defined( USE_JACK )
++
++#include <memory>
++#include <exception>
++#include <cassert>
++#include <stdint.h>
++#include <pthread.h>
++#include <jack/jack.h>
++#include <jack/midiport.h>
++#include <wx/wx.h>
++#include <jdkmidi/multitrack.h>
++#include <jdkmidi/sequencer.h>
++#include "Midi/CommonMidiUtils.h"
++#include "Midi/Sequence.h"
++#include "Midi/Players/PlatformMidiManager.h"
++
++using namespace std;
++
++
++struct ScopedLocker {
++	~ScopedLocker() {
++		pthread_mutex_unlock( _mutex );
++	}
++
++	ScopedLocker( pthread_mutex_t* m ): _mutex( m ) {
++		if( pthread_mutex_lock( _mutex ) != 0 ) {
++			throw exception();
++		}
++	}
++
++	private:
++		pthread_mutex_t* _mutex;
++};
++
++struct JackMidiPlayer {
++	// notice:
++	//     0. do not use malloc, free, printf, etc. while _mutex is being locked.
++	//     1. be careful of priority inversion because handleJack() is running
++	//        on the high priority thread.
++
++	~JackMidiPlayer() {
++		jack_client_close( _jack );
++		pthread_cond_destroy( &_finish );
++		pthread_mutex_destroy( &_mutex );
++		delete _sequencer;
++	}
++
++	JackMidiPlayer(): _playing( false ), _sequencer( 0 ) {
++		pthread_mutexattr_t mattr;
++		if( pthread_mutexattr_init( &mattr ) != 0 )
++			throw exception();
++		if( pthread_mutexattr_setprotocol( &mattr, PTHREAD_PRIO_INHERIT ) != 0 )
++			throw exception();
++		if( pthread_mutex_init( &_mutex, &mattr ) != 0 )
++			throw exception();
++		try {
++			if( pthread_cond_init( &_finish, NULL ) != 0 )
++				throw exception();
++			try {
++				_jack = jack_client_open( "aria_maestosa", JackNullOption, NULL );
++				if( _jack == 0 )
++					throw exception();
++				try {
++					if( jack_set_process_callback( _jack, &handleJack, this ) != 0 )
++						throw exception();
++					_port = jack_port_register(
++						_jack, "midi_out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0
++					);
++					if( _port == 0 )
++						throw exception();
++					if( jack_activate( _jack ) != 0 )
++						throw exception();
++				}
++				catch( ... ) {
++					jack_client_close( _jack );
++					throw;
++				}
++			}
++			catch( ... ) {
++				pthread_cond_destroy( &_finish );
++				throw;
++			}
++		}
++		catch( ... ) {
++			pthread_mutex_destroy( &_mutex );
++			throw;
++		}
++	}
++
++	void setTrack( jdkmidi::MIDIMultiTrack* tracks ) {
++		jdkmidi::MIDISequencer* tmp = new jdkmidi::MIDISequencer( tracks );
++		{
++			ScopedLocker lock( &_mutex );
++			swap( tmp, _sequencer );
++			_frame = 0;
++		}
++		delete tmp;
++	}
++
++	void play() {
++		assert( _sequencer != 0 );
++		ScopedLocker lock( &_mutex );
++		_playing = true;
++	}
++
++	void play( double bgn ) {
++		assert( _sequencer != 0 );
++		unsigned srate = jack_get_sample_rate( _jack );
++
++		ScopedLocker lock( &_mutex );
++		_frame = uint64_t( bgn * srate );
++		_playing = true;
++	}
++
++	void stop() {
++		ScopedLocker lock( &_mutex );
++		_playing = false;
++	}
++
++	void wait() {
++		ScopedLocker lock( &_mutex );
++		if( _playing ) {
++			pthread_cond_wait( &_finish, &_mutex );
++		}
++	}
++
++	bool isPlaying() {
++		ScopedLocker lock( &_mutex );
++		return _playing;
++	}
++
++	int getTick() {
++		assert( _sequencer != 0 );
++		ScopedLocker lock( &_mutex );
++		return _sequencer->GetCurrentMIDIClockTime();
++	}
++	
++	private:
++		static int handleJack( jack_nframes_t nFrame, void* selfv ) {
++			JackMidiPlayer* self = reinterpret_cast<JackMidiPlayer*>( selfv );
++			unsigned srate = jack_get_sample_rate( self->_jack );
++			void* buf = jack_port_get_buffer( self->_port, nFrame );
++			jack_midi_clear_buffer( buf );
++
++			ScopedLocker lock( &self->_mutex );
++			if( self->_playing ) {
++				// [bgn, end)
++				double bgn = self->_frame * (1000.0 / srate);
++				double end = (self->_frame + nFrame) * (1000.0 / srate);
++
++				self->_sequencer->GoToTimeMs( bgn );
++
++				float t;
++				while( self->_sequencer->GetNextEventTimeMs( &t ) && t < end ) {
++					int trackId;
++					jdkmidi::MIDITimedBigMessage msg;
++					self->_sequencer->GetNextEvent( &trackId, &msg );
++
++					if( !msg.IsMetaEvent() ) {
++						unsigned l = msg.GetLength();
++						assert( l < 4 );
++						uint8_t* ev = jack_midi_event_reserve(
++							buf, int( t * (srate / 1000.0) ) - self->_frame, l
++						);
++						ev[0] = msg.GetStatus();
++						if( l >= 2 ) {
++							ev[1] = msg.GetByte1();
++						}
++						if( l >= 3 ) {
++							ev[2] = msg.GetByte2();
++						}
++					}
++				}
++				self->_frame += nFrame;
++
++				if( !self->_sequencer->GetNextEventTimeMs( &t ) ) {
++					self->_playing = false;
++					pthread_cond_signal( &self->_finish );
++				}
++			}
++
++			return 0;
++		}
++
++		jack_client_t* _jack;
++		jack_port_t* _port;
++		bool _playing;
++		uint64_t _frame;
++		jdkmidi::MIDISequencer* _sequencer;
++		pthread_mutex_t _mutex;
++		pthread_cond_t _finish;
++};
++
++
++namespace AriaMaestosa { namespace PlatformMidiManager {
++
++	auto_ptr<JackMidiPlayer> player;
++	auto_ptr<jdkmidi::MIDIMultiTrack> tracks;
++
++	void initMidiPlayer() {
++		player.reset( new JackMidiPlayer() );
++	}
++
++	void freeMidiPlayer() {
++		player.reset();
++	}
++
++	void resetSync() {
++		jdkmidi::MIDIMultiTrack tracks( 1 );
++		tracks.SetClksPerBeat( 960 );
++		for( int ch = 0; ch < 16; ++ch ) {
++			jdkmidi::MIDITimedBigMessage msg;
++			msg.SetTime( 0 );
++			msg.SetAllNotesOff( ch );
++			tracks.GetTrack( 0 )->PutEvent( msg );
++		}
++
++		player->setTrack( &tracks );
++		player->play( 0.0 );
++		player->wait(); // finish playing before destroying tracks.
++	}
++
++	void playNote( int note, int vel, int dur, int ch, int inst ) {
++		resetSync();
++
++		jdkmidi::MIDITimedBigMessage msg0, msg1, msg2;
++		// XXX
++		msg0.SetTime( 0 );
++		msg0.SetProgramChange( ch, inst );
++		msg1.SetTime( 0 );
++		msg1.SetNoteOn( ch, note, vel );
++		msg2.SetTime( dur );
++		msg2.SetNoteOff( ch, note, vel );
++
++		tracks.reset( new jdkmidi::MIDIMultiTrack( 1 ) );
++		tracks->SetClksPerBeat( 960 );
++		tracks->GetTrack( 0 )->PutEvent( msg0 );
++		tracks->GetTrack( 0 )->PutEvent( msg1 );
++		tracks->GetTrack( 0 )->PutEvent( msg2 );
++
++		player->setTrack( tracks.get() );
++		player->play( 0.0 );
++	}
++
++	void stopNote() {
++		resetSync();
++	}
++
++	bool playSequence( Sequence* seq, int* startTick ) {
++		resetSync();
++
++		int len = -1;
++		int nTrack = -1;
++		tracks.reset( new jdkmidi::MIDIMultiTrack() );
++		makeJDKMidiSequence( seq, *tracks, false, &len, startTick, &nTrack, true );
++		player->setTrack( tracks.get() );
++		player->play( 0.0 );
++
++		return true;
++	}
++
++	bool playSelected( Sequence* seq, int* startTick ) {
++		resetSync();
++
++		int len = -1;
++		int nTrack = -1;
++		tracks.reset( new jdkmidi::MIDIMultiTrack() );
++		makeJDKMidiSequence( seq, *tracks, true, &len, startTick, &nTrack, true );
++		player->setTrack( tracks.get() );
++		player->play( 0.0 );
++
++		return true;
++	}
++
++	bool isPlaying() {
++		return player->isPlaying();
++	}
++
++	void stop() {
++		resetSync();
++	}
++
++	int trackPlaybackProgression() {
++		return player->getTick();
++	}
++
++	wxString const getAudioExtension() {
++		return wxEmptyString;
++	}
++
++	wxString const getAudioWildcard() {
++		return wxEmptyString;
++	}
++
++	void exportAudioFile( Sequence*, wxString ) {
++	}
++
++	bool exportMidiFile( Sequence* seq, wxString file ) {
++		return AriaMaestosa::exportMidiFile( seq, file );
++	}
++
++	void seq_note_on( int, int, int ) {}
++	void seq_note_off( int, int ) {}
++	void seq_prog_change( int, int ) {}
++	void seq_controlchange( int, int, int ) {}
++	void seq_pitch_bend( int, int ) {}
++	void seq_notify_current_tick(int ) {}
++	bool seq_must_continue() { return false; }
++
++} }
++
++
++#endif // defined( USE_JACK )

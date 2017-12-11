@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="./default.css">
+        <title>switch - case の特殊な使い方</title>
+    </head>
+<body>
+
+<h1>switch-case の特殊な使い方</h1>
+<p><code>for, while, if</code> などの制御構造（とその構文を） C からほぼそのまま継承している言語は数多い。その中で C/C++ の <code>switch - case</code> には、必ずしも <code>case</code> を <code>switch</code> 直下に置く必要がないという、他の言語にはあまり継承されていない特徴がある。この用法をなんとなく集めてみた。</p>
+
+<h3>Duff's device</h3>
+<p><a href="http://en.wikipedia.org/wiki/Duff%27s_device">Wikipedia/Duff's Device (T. Duff)</a></p>
+<p>この話で真っ先に例として挙げられるのがこれ。ループアンロールされた配列コピーのコード。</p>
+<pre>
+void send(int* to, int* from, size_t count) {
+    size_t n = (count + 7) / 8;
+    switch (count % 8) {
+                do {
+        case 0:     *to++ = *from++;
+        case 7:     *to++ = *from++;
+        case 6:     *to++ = *from++;
+        case 5:     *to++ = *from++;
+        case 4:     *to++ = *from++;
+        case 3:     *to++ = *from++;
+        case 2:     *to++ = *from++;
+        case 1:     *to++ = *from++;
+                } while (--n > 0);
+    }
+}
+</pre>
+
+<h3>Generator</h3>
+<p><a href="http://www.chiark.greenend.org.uk/~sgtatham/coroutines.html">Coroutines in C (S. Tatham)</a></p>
+<p>Python でいう Generator 的なものを ANSI C の規格内で実装する。 <a href="http://www.putty.org/">Putty</a> で実際に使われているらしい。</p>
+<pre>
+int evensThenOdds( int n ) {
+    int i;
+    for (i = 0; i < n; i += 2) {
+        yield i;
+    }
+    for (i = 1; i < n; i += 2) {
+        yield i;
+    }
+}
+</pre>
+<p>これを</p>
+<pre>
+int evensThenOdds( int n ) {
+    static int state = 0;
+    static int i;
+    switch (state) {
+    case 0:
+        for (i = 0; i < n; i += 2) {
+            state = 1; return i; case 1:;
+        }
+        for (i = 1; i < n; i += 2) {
+            state = 2; return i; case 2:;
+        }
+    }
+}
+</pre>
+<p>こう書く。 <code>__LINE__</code> を使ってマクロを定義すれば、 <code>yield</code> 構文に近い感じで使える (ただし変数の取り扱いには注意が必要。 C++ なら functor にして、ローカル変数を全てメンバ変数に置きかえるのが良いとおもう) 。</p>
+
+<h3>Memoization Device</h3>
+<p><a href="http://www.stroustrup.com/OOPSLA-typeswitch-draft.pdf">Open and Efficient Type Switch for C++ (Y. Solodkyy, G. D. Reis,  B. Stroustrup)</a></p>
+<pre>
+if (P1(x)) { statement1; } else
+if (P2(x)) { statement2; } else
+    ...
+if (Pn(x)) { statementn; }
+</pre>
+<p>こういうのを、 memoization で速くするのに使う。</p>
+<pre>
+static unordered_map&lt;decltype(T), size_t&gt; jump_targets;
+size_t& jump_to = jump_targets[x];
+switch (jump_to) {
+default:
+    if (P1(x)) { jump_to = 1; case 1: statement1; } else
+    if (P2(x)) { jump_to = 2; case 2: statement2; } else
+        ...
+    if (Pn(x)) { jump_to = n; case n: statementn; }
+}
+</pre>
+<p>ここだけ抜き出すと、別に普通の書き方もできるんじゃ、と思ってしまうのだけれど、関数型言語のパターンマッチのようなものを C++ のライブラリとして実装するのが目的で、マクロを実装するのに都合がいい（ようだ）。</p>
+
+<h2>まとめ</h2>
+<p>新しい言語を設計する場合にはほとんどの場合、利点が欠点を上回ると判断される仕様だとは思うけれど、実践的な使い方もいくつか考えられる。まあ <code>goto</code> みたいなもんか。</p>
+
+<p><a href="../"><code>cd ../</code></a></p>
+<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+
+</body>
+</html>
