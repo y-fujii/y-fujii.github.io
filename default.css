@@ -127,13 +127,6 @@ address {
 	text-align: right;
 }
 
-address a, address a:hover {
-	color: #101010;
-	text-decoration: none;
-	outline: none;
-	cursor: text;
-}
-
 pre, p.figure img {
 	padding: 0.5em;
 	border: solid 1px #c0c0c0;
@@ -154,4 +147,24 @@ table.figure td {
 
 a[href="../"] {
 	font-family: Inconsolata, monospace;
+}
+
+.i-am {
+	font-size: 80%;
+	font-weight: bold;
+	color: #ffffff;
+}
+
+.i-am:before {
+	content: "i am";
+	padding: 0.2em 0.3em 0.2em 0.5em;
+	border-radius: 0.2em 0 0 0.2em;
+	background-color: #606060;
+}
+
+.i-am:after {
+	content: "alive";
+	padding: 0.2em 0.5em 0.2em 0.3em;
+	border-radius: 0 0.2em 0.2em 0;
+	background-color: #60a010;
 }
