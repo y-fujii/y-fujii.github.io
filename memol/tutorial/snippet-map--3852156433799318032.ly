@@ -11,9 +11,9 @@
 
 ("31/lily-507e2352.ly" . "tutorial.ly")
 
-("15/lily-2597ac2d.ly" . "tutorial.ly")
+("45/lily-5a8161d5.ly" . "tutorial.ly")
 
-("c6/lily-def655a9.ly" . "tutorial.ly")
+("26/lily-a6942404.ly" . "tutorial.ly")
 
 ("d9/lily-5a10abcb.ly" . "tutorial.ly")
 

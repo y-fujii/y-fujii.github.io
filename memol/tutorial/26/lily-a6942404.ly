@@ -26,14 +26,16 @@
 % ****************************************************************
 % ly snippet contents follows:
 % ****************************************************************
-\sourcefileline 312
+\sourcefileline 313
 
+	\set tieWaitForNote = ##t
 	<c e g>2 <c e g>2
 	<<
 		\new Voice = "one" { \voiceOne e e }
 		\new Voice = "two" { \voiceTwo c1 }
 	>>
 	c4. e8 c4. e8
+	c4~ e4~ g4~ <c, e g>4
 
 
 
