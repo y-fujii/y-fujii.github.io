@@ -26,7 +26,7 @@
 % ****************************************************************
 % ly snippet contents follows:
 % ****************************************************************
-\sourcefileline 313
+\sourcefileline 335
 
 	\set tieWaitForNote = ##t
 	<c e g>2 <c e g>2
