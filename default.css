@@ -43,7 +43,7 @@ li, dd {
 }
 
 li > *, dt > *, dd > * {
-	margin: 0em 0em;
+	margin: 0;
 }
 
 ul {
