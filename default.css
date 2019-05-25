@@ -47,7 +47,8 @@ li > *, dt > *, dd > * {
 }
 
 ul {
-	list-style-type: none;
+	list-style: none;
+	margin-left: -1em;
 }
 
 ul > li {
@@ -56,7 +57,9 @@ ul > li {
 
 ul > li:before {
 	position: absolute;
-	left: -0.5em;
+	width: 1em;
+	left: -1em;
+	text-align: center;
 	content: "\00b7";
 }
 
