@@ -42,13 +42,13 @@ li, dd {
 	margin-left: 2em;
 }
 
-li > *, dt > *, dd > * {
-	margin: 0;
-}
-
 ul {
 	list-style: none;
 	margin-left: -1em;
+}
+
+li > *, dt > *, dd > * {
+	margin: 0;
 }
 
 ul > li {
