@@ -51,14 +51,14 @@ li > ul {
 }
 
 li {
-	margin-left: 1em;
+	padding-left: 1em;
 	position: relative;
 }
 
 li:before {
 	position: absolute;
+	left: 0;
 	width: 1em;
-	left: -1em;
 	text-align: center;
 	content: "\00b7";
 }
