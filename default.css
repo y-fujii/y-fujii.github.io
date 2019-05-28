@@ -38,29 +38,33 @@ p:lang(ja), h1:lang(ja), h2:lang(ja), h3:lang(ja), ul:lang(ja), ol:lang(ja), dl:
 	margin: 1em 0;
 }
 
-li, dd {
-	margin-left: 2em;
-}
-
-ul {
-	list-style: none;
-	margin-left: -1em;
-}
-
 li > *, dt > *, dd > * {
 	margin: 0;
 }
 
-ul > li {
+ul {
+	list-style: none;
+}
+
+li > ul {
+	margin-left: 1em;
+}
+
+li {
+	margin-left: 1em;
 	position: relative;
 }
 
-ul > li:before {
+li:before {
 	position: absolute;
 	width: 1em;
 	left: -1em;
 	text-align: center;
 	content: "\00b7";
+}
+
+dd {
+	margin-left: 2em;
 }
 
 table {
