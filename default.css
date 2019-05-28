@@ -46,18 +46,18 @@ ul {
 	list-style: none;
 }
 
-li > ul {
+li > ul, li > ol {
 	margin-left: 1em;
 }
 
 li {
-	padding-left: 1em;
+	margin-left: 1em;
 	position: relative;
 }
 
 ul > li:before {
 	position: absolute;
-	left: 0;
+	left: -1em;
 	width: 1em;
 	text-align: center;
 	content: "\00b7";
