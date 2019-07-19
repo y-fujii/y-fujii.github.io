@@ -1,9 +1,5 @@
 @import url(//fonts.googleapis.com/css?family=Inconsolata|Source+Sans+Pro:400,700);
 
-@viewport {
-	width: device-width;
-}
-
 * {
 	margin:  0;
 	padding: 0;
@@ -24,9 +20,14 @@ body:lang(ja) {
 	line-height: 1.75;
 }
 
+pre {
+	white-space: pre-wrap;
+}
+
 pre, code {
 	font-family: Inconsolata, monospace;
 	line-height: 1.5;
+	word-break: break-all;
 	background: #f8f8f8;
 }
 
@@ -92,6 +93,13 @@ del {
 	text-decoration: line-through;
 }
 
+img, svg, object {
+	max-width: 100%;
+	height: auto;
+}
+
+/******************************************************************************/
+
 body {
 	max-width: 42em;
 	margin: 0 auto;
@@ -137,6 +145,10 @@ address {
 pre, p.figure img {
 	padding: 0.5em;
 	border: solid 1px #c0c0c0;
+}
+
+p.figure img {
+	max-width: calc( 100% - 1em - 2px );
 }
 
 p.figure {

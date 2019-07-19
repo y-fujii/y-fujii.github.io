@@ -1,14 +1,16 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<!doctype html>
 <html lang="ja">
-    <head>
-		<meta http-equiv="content-type" content="text/html; charset=utf-8">
-        <title>Python Tips</title>
-        <link rel="stylesheet" href="/default.css">
-    </head>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<title>Python Tips</title>
+		<link rel="stylesheet" href="/default.css">
+	</head>
 <body>
 
-
 <h1>Python Tips</h1>
+
+<p><em class="warning">このページは Python 2.3 くらいのときに書かれたものです。</em></p>
 
 <h2>内包表記とλ式</h2>
 <pre>
@@ -132,8 +134,8 @@ def detect( text ):
 <h2>複数の *.py を直接実行可能な 1 ファイルにまとめる</h2>
 <p>CPython は zip ファイルをインポートできて (<a href="http://docs.python.org/library/zipimport.html">zipimport</a>) 、さらに __main__.py がアーカイブ内にあると python archive.zip したときにそれが実行される。また一方で zip ファイルはヘッダを尻に持っていて、ファイルの先頭にゴミがついていても問題なく読み込める。そこで、</p>
 <pre>
-$ echo "#!/usr/bin/env python" > executable
-$ app.zip >> executable
+$ echo "#!/usr/bin/env python" &gt; executable
+$ app.zip &gt;&gt; executable
 $ ./executable
 </pre>
 <p>とすれば、直接実行可能なファイルが作れる。</p>
