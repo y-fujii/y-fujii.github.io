@@ -8,6 +8,7 @@ body {
 pre, code {
 	font-family: Inconsolata, monospace;
 	line-height: 1.2;
+	word-break: break-all;
 }
 
 p, li {
