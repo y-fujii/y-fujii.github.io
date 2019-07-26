@@ -5,6 +5,10 @@ body {
 	max-width: 48em;
 }
 
+pre {
+	white-space: pre-wrap;
+}
+
 pre, code {
 	font-family: Inconsolata, monospace;
 	line-height: 1.2;
