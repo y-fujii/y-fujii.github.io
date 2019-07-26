@@ -25,9 +25,12 @@ pre {
 }
 
 pre, code, a {
+	word-break: break-all;
+}
+
+pre, code, a {
 	font-family: Inconsolata, monospace;
 	line-height: 1.5;
-	word-break: break-all;
 	background: #f8f8f8;
 }
 
