@@ -74,7 +74,7 @@
 			}
 
 			function make_scene(renderer) {
-				const specialMaterials = ["face", "body"];
+				const specialMaterials = ["face", "body", "eye"];
 				const colorDir = new THREE.Color(2, 1, 0).multiplyScalar(1/4);
 				const colorTop = new THREE.Color(2, 3, 4).multiplyScalar(1/4);
 				const colorBtm = new THREE.Color(3, 3, 3).multiplyScalar(1/4);
@@ -279,6 +279,7 @@
 
 <div style="display: none">\(
 	%\long\def\block#1#2{\begin{#1}#2\end{#1}}
+	\def\amp{&amp;}
 	\def\block#1#2{\begin{#1}#2\end{#1}}
 	\def\L{\left}
 	\def\R{\right}
@@ -330,23 +331,24 @@
 <div id="viewport"></div>
 
 <p style="text-align: right">
-	3D model: <a href="https://3d.nicovideo.jp/alicia/">Alicia Solid</a>
-	by <a href="https://twitter.com/kuroboshi">黒星紅白</a> and <a href="https://twitter.com/ukoku_k">雨刻</a>.
+	<a href="https://3d.nicovideo.jp/alicia/">Alicia Solid</a>
+	by <a href="https://twitter.com/kuroboshi">黒星紅白</a> and <a href="https://twitter.com/ukoku_k">雨刻</a>,
+	using <a href="https://threejs.org/">three.js</a>.
 </p>
 
 <h2>2. Notation</h2>
 
 <p>$$
 	\block{array}{{cl}
-		x & \text{ Real numbers.}
+		x \amp \text{ Real numbers.}
 		\\
-		\qi, \qj, \qk & \text{ Unit quaternions } (\qi^2 = \qj^2 = \qk^2 = \qi \qj \qk = -1).
+		\qi, \qj, \qk \amp \text{ Unit quaternions } (\qi^2 = \qj^2 = \qk^2 = \qi \qj \qk = -1).
 		\\
-		\qq = q_0 + q_1 \qi + q_2 \qj + q_3 \qk & \text{ Quaternions and their elements.}
+		\qq = q_0 + q_1 \qi + q_2 \qj + q_3 \qk \amp \text{ Quaternions and their elements.}
 		\\
-		\vv = (v_1, v_2, v_3) & \text{ 2d or 3d vectors and their elements.}
+		\vv = (v_1, v_2, v_3) \amp \text{ 2d or 3d vectors and their elements.}
 		\\
-		\qv = v_1 \qi + v_2 \qj + v_3 \qk & \text{ Implicit conversion from 3d vectors } \vv \text{ to quaternions } \qv.
+		\qv = v_1 \qi + v_2 \qj + v_3 \qk \amp \text{ Implicit conversion from 3d vectors } \vv \text{ to quaternions } \qv.
 	}
 $$</p>
 
@@ -367,9 +369,9 @@ $$</p>
 		<td>Azimuthal equidistant (My proposal)</td>
 		<td>$$
 			\block{align}{
-				(p_1,\, p_2) &= \sin \L( \frac{\pi}{2} |\vv| \R) \, \frac{\vv}{|\vv|}
+				(p_1,\, p_2) \amp= \sin \L( \frac{\pi}{2} |\vv| \R) \, \frac{\vv}{|\vv|}
 				\\
-				p_3 &= \cos \L( \frac{\pi}{2} |\vv| \R)
+				p_3 \amp= \cos \L( \frac{\pi}{2} |\vv| \R)
 			}
 		$$</td>
 	</tr>
@@ -377,16 +379,16 @@ $$</p>
 		<td>Orthographic (Shoemake)</td>
 		<td>$$
 			\block{align}{
-				(p_1,\, p_2) &= \vv
+				(p_1,\, p_2) \amp= \vv
 				\\
-				p_3 &= \sqrt{1 - {|\vv|}^2}
-				&& \if {|\vv|}^2 < 1,
+				p_3 \amp= \sqrt{1 - {|\vv|}^2}
+				\amp\amp \if {|\vv|}^2 \lt 1,
 				\\
 				\\
-				(p_1,\, p_2) &= \frac{\vv}{|\vv|}
+				(p_1,\, p_2) \amp= \frac{\vv}{|\vv|}
 				\\
-				p_3 &= 0
-				&& \otherwise.
+				p_3 \amp= 0
+				\amp\amp \otherwise.
 			}
 		$$</td>
 	</tr>
@@ -394,24 +396,24 @@ $$</p>
 		<td>Orthographic + hyperbola (Holroyd)</td>
 		<td>$$
 			\block{align}{
-				(p_1, \, p_2) &= \vv
+				(p_1, \, p_2) \amp= \vv
 				\\
-				p_3 &= \sqrt{1 - {|\vv|}^2}
-				&& \if {|\vv|}^2 < \frac{1}{2},
+				p_3 \amp= \sqrt{1 - {|\vv|}^2}
+				\amp\amp \if {|\vv|}^2 \lt \frac{1}{2},
 				\\
 				\\
-				(\tilde{p}_1,\, \tilde{p}_2) &:= \vv
+				(\tilde{p}_1,\, \tilde{p}_2) \amp:= \vv
 				\\
-				\tilde{p}_3 &:= \frac{1}{2 |\vv|}
+				\tilde{p}_3 \amp:= \frac{1}{2 |\vv|}
 				\\
-				\vp &= \frac{\vec{\tilde{p}}}{|\vec{\tilde{p}}|}
-				&& \otherwise.
+				\vp \amp= \frac{\vec{\tilde{p}}}{|\vec{\tilde{p}}|}
+				\amp\amp \otherwise.
 			}
 		$$</td>
 	</tr>
 </table>
 
-<p>Point pairs \( \vp_0, \ \vp_1 \) on the unit sphere to the rotation \( \qq \) :</p>
+<p>Point pairs \( \vp_0, \ \vp_1 \) on the unit sphere to the rotation \( \qq \in \mathbb{H} \) :</p>
 <p>$$
 		\cos \theta := {\vp_0} \cdot {\vp_1} \,,\,
 		\vec{a} := \frac{ \vp_0 \times \vp_1 }{ | \vp_0 \times \vp_1 | }
@@ -430,8 +432,8 @@ $$</p>
 
 <h2>6. References</h2>
 <ul>
-	<li>[0]: <a href="https://doi.org/10.20380/GI1992.18">"ARCBALL: A user interface for specifying three-dimensional orientation using a mouse", Ken Shoemake.</a></li>
-	<li>[1]: <a href="https://doi.org/10.1109/TVCG.2004.1260772">"Virtual Trackballs Revisited", K. Henriksen, J. Sporring, K. Hornbak.</a></li>
+	<li>[0]: <a href="https://doi.org/10.20380/GI1992.18">"ARCBALL: A user interface for specifying three-dimensional orientation using a mouse"</a>, Ken Shoemake.</li>
+	<li>[1]: <a href="https://doi.org/10.1109/TVCG.2004.1260772">"Virtual Trackballs Revisited"</a>, K. Henriksen, J. Sporring, K. Hornbak.</li>
 </ul>
 
 <address>
