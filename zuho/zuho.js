@@ -1,22 +1,6 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
-"use strict";
 
-if( NodeList.prototype[Symbol.iterator] === undefined ) {
-	NodeList.prototype[Symbol.iterator] = Array.prototype[Symbol.iterator];
-}
-if( Element.prototype.setCapture === undefined ) {
-	Element.prototype.setCapture = function() {};
-}
-if( Element.prototype.requestFullscreen === undefined ) {
-	Element.prototype.requestFullscreen =
-		Element.prototype.mozRequestFullScreen ||
-		Element.prototype.webkitRequestFullscreen ||
-		Element.prototype.msRequestFullscreen;
-}
-
-const zuho = {};
-
-zuho.Matrix = class {
+export class Matrix {
 	static mul( n, x, y ) {
 		console.assert( x.length == n * n && y.length == n * n );
 		const z = new Float32Array( n * n );
@@ -54,7 +38,7 @@ zuho.Matrix = class {
 	}
 };
 
-zuho.Renderer = class {
+export class Renderer {
 	constructor( canvas ) {
 		const params = {
 			alpha: true,
@@ -75,17 +59,17 @@ zuho.Renderer = class {
 		this._fragShaderSlow = gl.createShader( gl.FRAGMENT_SHADER );
 		this._progFast       = gl.createProgram();
 		this._progSlow       = gl.createProgram();
-		this._compile( this._vertShader, zuho.Renderer._vertSource );
+		this._compile( this._vertShader, Renderer._vertSource );
 		gl.attachShader( this._progFast, this._vertShader );
 		gl.attachShader( this._progFast, this._fragShaderFast );
 		gl.attachShader( this._progSlow, this._vertShader );
 		gl.attachShader( this._progSlow, this._fragShaderSlow );
-		this.setMapping( Object.values( zuho.Mapping )[0] );
-		this.setCamera( zuho.Matrix.identity( 3 ), 1.0 );
+		this.setMapping( Mapping.azConformal );
+		this.setCamera( Matrix.identity( 3 ), 1.0 );
 
 		this._vbo = gl.createBuffer();
 		gl.bindBuffer( gl.ARRAY_BUFFER, this._vbo );
-		gl.bufferData( gl.ARRAY_BUFFER, zuho.Renderer._vertices, gl.STATIC_DRAW );
+		gl.bufferData( gl.ARRAY_BUFFER, Renderer._vertices, gl.STATIC_DRAW );
 
 		this._tex = gl.createTexture();
 		gl.bindTexture( gl.TEXTURE_2D, this._tex );
@@ -106,8 +90,8 @@ zuho.Renderer = class {
 	}
 
 	setMapping( code ) {
-		this._compile( this._fragShaderFast, zuho.Renderer._fragSourceCommon + zuho.Renderer._fragSourceFast + code );
-		this._compile( this._fragShaderSlow, zuho.Renderer._fragSourceCommon + zuho.Renderer._fragSourceSlow + code );
+		this._compile( this._fragShaderFast, Renderer._fragSourceCommon + Renderer._fragSourceFast + code );
+		this._compile( this._fragShaderSlow, Renderer._fragSourceCommon + Renderer._fragSourceSlow + code );
 		this._link( this._progFast );
 		this._link( this._progSlow );
 	}
@@ -173,11 +157,11 @@ zuho.Renderer = class {
 	}
 };
 
-zuho.Renderer._vertices = new Float32Array( [
+Renderer._vertices = new Float32Array( [
 	-1.0, -1.0, +1.0, -1.0, -1.0, +1.0, +1.0, +1.0,
 ] );
 
-zuho.Renderer._fragSourceCommon = String.raw`
+Renderer._fragSourceCommon = String.raw`
 	#ifdef GL_FRAGMENT_PRECISION_HIGH
 		precision highp   float;
 	#else
@@ -207,13 +191,13 @@ zuho.Renderer._fragSourceCommon = String.raw`
 	}
 `;
 
-zuho.Renderer._fragSourceFast = String.raw`
+Renderer._fragSourceFast = String.raw`
 	void main() {
 		gl_FragColor = sample( 0.0, 0.0 );
 	}
 `;
 
-zuho.Renderer._fragSourceSlow = String.raw`
+Renderer._fragSourceSlow = String.raw`
 	vec4 sampleSq( float dx, float dy ) {
 		vec4 s = sample( dx, dy );
 		return vec4( s.xyz * s.xyz, s.w );
@@ -243,7 +227,7 @@ zuho.Renderer._fragSourceSlow = String.raw`
 	}
 `;
 
-zuho.Renderer._vertSource = String.raw`
+Renderer._vertSource = String.raw`
 	uniform   vec2 uScale;
 	attribute vec2 aPos;
 	varying   vec2 vPos;
@@ -254,7 +238,7 @@ zuho.Renderer._vertSource = String.raw`
 	}
 `;
 
-zuho.Mapping = {
+export let Mapping = {
 	azPerspective: String.raw`
 		bool unproject( vec2 p, out vec3 q ) {
 			q = vec3( p, -1.0 );
@@ -369,26 +353,22 @@ zuho.Mapping = {
 	`,
 };
 
-zuho.Handler = class {
+export class Handler {
 	constructor( elem, renderer ) {
 		this._element  = elem;
 		this._renderer = renderer;
-		this._mousePos = null;
-		this._touchVar = null;
+		this._pointers = new Map();
 		this._theta    = Math.PI / -2.0;
 		this._phi      = 0.0;
 		this._scale    = 1.0;
 		this._timer    = null;
-		elem.addEventListener( "mousedown",   this._onMouseDown .bind( this ) );
-		elem.addEventListener( "mouseup",     this._onMouseUp   .bind( this ) );
-		elem.addEventListener( "mousemove",   this._onMouseMove .bind( this ) );
-		elem.addEventListener( "wheel",       this._onWheel     .bind( this ) );
-		elem.addEventListener( "touchstart",  this._onTouchStart.bind( this ) );
-		elem.addEventListener( "touchend",    this._onTouchEnd  .bind( this ) );
-		elem.addEventListener( "touchcancel", this._onTouchEnd  .bind( this ) );
-		elem.addEventListener( "touchmove",   this._onTouchMove .bind( this ) );
-		addEventListener( "resize",            this._onResize   .bind( this ) );
-		addEventListener( "deviceorientation", this._onOrientation.bind( this ) );
+		elem.style.touchAction = "none"; // XXX
+		elem.addEventListener( "pointerdown",   this._onPointerDown.bind( this ) );
+		elem.addEventListener( "pointerup",     this._onPointerUp  .bind( this ) );
+		elem.addEventListener( "pointercancel", this._onPointerUp  .bind( this ) );
+		elem.addEventListener( "pointermove",   this._onPointerMove.bind( this ) );
+		elem.addEventListener( "wheel",         this._onWheel      .bind( this ) );
+		new ResizeObserver( this._onResize.bind( this ) ).observe( elem );
 		this.update( false );
 	}
 
@@ -397,9 +377,9 @@ zuho.Handler = class {
 			this._renderer.resize();
 		}
 
-		const rot = zuho.Matrix.mul( 3,
-			zuho.Matrix.rotation( 3, 1, 2, this._theta ),
-			zuho.Matrix.rotation( 3, 0, 1, this._phi   )
+		const rot = Matrix.mul( 3,
+			Matrix.rotation( 3, 1, 2, this._theta ),
+			Matrix.rotation( 3, 0, 1, this._phi   )
 		);
 		this._renderer.setCamera( rot, this._scale );
 		this._renderer.render( fast );
@@ -411,65 +391,79 @@ zuho.Handler = class {
 		this._timer = setTimeout( this._onTimer.bind( this ), 250 );
 	}
 
-	_touchVariance( ev ) {
-		if( ev.touches.length < 2 ) {
-			return null;
+	_pointerInfo() {
+		const n = this._pointers.size;
+		if( n < 1 ) {
+			return { x: null, y: null, v: null };
 		}
 
+		// calculate mean.
 		let xs = 0.0;
 		let ys = 0.0;
-		for( let t of ev.touches ) {
-			xs += t.screenX;
-			ys += t.screenY;
+		for( const ev of this._pointers.values() ) {
+			xs += ev.screenX;
+			ys += ev.screenY;
 		}
-		const xb = xs / ev.touches.length;
-		const yb = ys / ev.touches.length;
+		const xm = xs / n;
+		const ym = ys / n;
 
-		let s2 = 0.0;
-		for( let t of ev.touches ) {
-			s2 += (t.screenX - xb) * (t.screenX - xb) + (t.screenY - yb) * (t.screenY - yb);
+		if( n < 2 ) {
+			return { x: xm, y: ym, v: null };
 		}
-		return s2 / (ev.touches.length - 1);
+
+		// calculate variance.
+		let s2 = 0.0;
+		for( const ev of this._pointers.values() ) {
+			s2 += (ev.screenX - xm) * (ev.screenX - xm) + (ev.screenY - ym) * (ev.screenY - ym);
+		}
+		const v = s2 / (n - 1);
+
+		return { x: xm, y: ym, v: v };
 	}
 
 	_onTimer( ev ) {
 		this.update( false );
 	}
 
-	_onMouseDown( ev ) {
-		if( ev.button != 0 ) {
-			return;
-		}
-		this._mousePos = [ ev.clientX, ev.clientY ];
-		ev.target.setCapture();
-		ev.preventDefault();
+	_onPointerDown( ev ) {
+		this._element.setPointerCapture( ev.pointerId );
+		this._pointers.set( ev.pointerId, ev );
 	}
 
-	_onMouseUp( ev ) {
-		this._mousePos = null;
+	_onPointerUp( ev ) {
+		this._element.releasePointerCapture( ev.pointerId );
+		this._pointers.delete( ev.pointerId );
 		this.update( false );
-		ev.preventDefault();
 	}
 
-	_onMouseMove( ev ) {
-		if( this._mousePos === null ) {
+	_onPointerMove( ev ) {
+		const prev = this._pointerInfo();
+		if( this._pointers.has( ev.pointerId ) ) {
+			this._pointers.set( ev.pointerId, ev );
+		}
+		const curr = this._pointerInfo();
+
+		if( prev.x === null || curr.x === null ) {
 			return;
 		}
 
 		const rect = this._element.getBoundingClientRect();
 		const unit = 2.0 / Math.sqrt( rect.width * rect.height );
-		const dx = ev.clientX - this._mousePos[0];
-		const dy = ev.clientY - this._mousePos[1];
+		const dx = unit * (curr.x - prev.x);
+		const dy = unit * (curr.y - prev.y);
 		if( ev.shiftKey ) {
-			this._scale *= Math.exp( unit * (dx + dy) );
+			this._scale *= Math.exp( dx + dy );
 		}
 		else {
-			this._phi   -= (this._scale * unit) * dx;
-			this._theta -= (this._scale * unit) * dy;
+			this._phi   -= this._scale * dx;
+			this._theta -= this._scale * dy;
 		}
-		this._mousePos = [ ev.clientX, ev.clientY ];
+
+		if( prev.v !== null && curr.v !== null ) {
+			this._scale *= Math.sqrt( prev.v / curr.v );
+		}
+
 		this.update( true );
-		ev.preventDefault();
 	}
 
 	_onWheel( ev ) {
@@ -479,150 +473,63 @@ zuho.Handler = class {
 			                   0.0
 		);
 		this._updateDelayed();
-		ev.preventDefault();
 	}
 
-	_onTouchStart( ev ) {
-		this._touchVar = this._touchVariance( ev );
-		ev.preventDefault();
-	}
-
-	_onTouchEnd( ev ) {
-		this._touchVar = this._touchVariance( ev );
-		if( this._touchVar === null ) {
-			this.update( false );
-		}
-		ev.preventDefault();
-	}
-
-	_onTouchMove( ev ) {
-		const variance = this._touchVariance( ev );
-		if( this._touchVar !== null && variance !== null ) {
-			this._scale *= Math.sqrt( this._touchVar / variance );
-			this.update( true );
-		}
-		this._touchVar = variance;
-		ev.preventDefault();
-	}
-
-	_onResize( ev ) {
+	_onResize( entries ) {
 		this.update( false );
-		screen.orientation.lock( "landscape-primary" );
-	}
-
-	_onOrientation( ev ) {
-		let rot = zuho.Matrix.identity( 3 );
-		rot = zuho.Matrix.mul( 3, zuho.Matrix.rotation( 3, 1, 0, (Math.PI / 180.0) * ev.alpha ), rot );
-		rot = zuho.Matrix.mul( 3, zuho.Matrix.rotation( 3, 2, 1, (Math.PI / 180.0) * ev.beta  ), rot );
-		rot = zuho.Matrix.mul( 3, zuho.Matrix.rotation( 3, 0, 2, (Math.PI / 180.0) * ev.gamma ), rot );
-		if( screen.orientation.angle !== undefined ) {
-			rot = zuho.Matrix.mul( 3, zuho.Matrix.rotation( 3, 0, 1, (Math.PI / 180.0) * screen.orientation.angle ), rot );
-		}
-		this._renderer.setCamera( rot, this._scale );
-		this._renderer.render( true );
 	}
 };
 
-zuho.Menu = class {
-	constructor( elem, renderer ) {
-		const menu = document.createRange().createContextualFragment( zuho.Menu.template );
-		for( let e of menu.querySelectorAll( ".mapping" ) ) {
-			const type = e.dataset.type;
-			e.onclick = function( ev ) {
-				renderer.setMapping( zuho.Mapping[type] );
-				renderer.render( false );
-				ev.preventDefault();
-			};
+export class Element extends HTMLElement {
+	static get observedAttributes() {
+		return [ "src", "mapping" ];
+	}
+
+	constructor() {
+		super();
+		const shadow = this.attachShadow( { mode: "open" } );
+		const canvas = shadow.appendChild( document.createElement( "canvas" ) );
+		canvas.style.display = "block";
+		canvas.style.width   = "100%";
+		canvas.style.height  = "100%";
+		this._renderer = new Renderer( canvas );
+		this._handler  = new Handler( canvas, this._renderer );
+	}
+
+	attributeChangedCallback( key, oldVal, newVal ) {
+		switch( key ) {
+			case "src": {
+				const img = new Image();
+				img.onload = () => {
+					this._renderer.setImage( img );
+					this._renderer.render( false );
+				};
+				img.src = newVal;
+				break;
+			}
+			case "mapping": {
+				this._renderer.setMapping( Mapping[newVal] );
+				this._renderer.render( false );
+				break;
+			}
 		}
-		const e = menu.querySelector( ".fullscreen" );
-		e.onclick = function( ev ) {
-			elem.requestFullscreen();
-		};
-		elem.appendChild( menu );
 	}
-};
 
-zuho.Menu.template = String.raw`
-	<menu>
-		<menuitem class="mapping" data-type="azPerspective">Azimuthal | Perspective</menuitem>
-		<menuitem class="mapping" data-type="azConformal">Azimuthal | Conformal</menuitem>
-		<menuitem class="mapping" data-type="azEquidistant">Azimuthal | Equidistant</menuitem>
-		<menuitem class="mapping" data-type="azEquiarea">Azimuthal | Equiarea</menuitem>
-		<menuitem class="mapping" data-type="azOrthogonal">Azimuthal | Orthogonal</menuitem>
-		<menuitem class="mapping" data-type="azReflect">Azimuthal | Reflect</menuitem>
-		<menuitem class="mapping" data-type="cyPerspective">Cylindrical | Perspective</menuitem>
-		<menuitem class="mapping" data-type="cyConformal">Cylindrical | Conformal</menuitem>
-		<menuitem class="mapping" data-type="cyEquidistant">Cylindrical | Equidistant</menuitem>
-		<menuitem class="mapping" data-type="cyEquiarea">Cylindrical | Equiarea</menuitem>
-		<menuitem class="mapping" data-type="mollweide">Mollweide</menuitem>
-		<menuitem class="mapping" data-type="hammer">Hammer</menuitem>
-		<menuitem class="mapping" data-type="eckert4">Eckert IV</menuitem>
-		<hr>
-		<menuitem class="fullscreen">Fullscreen</menuitem>
-	</menu>
-`;
+	get src() {
+		return this.getAttribute( "src" );
+	}
 
-zuho.stylesheet = String.raw`
-	.equirectangular * {
-		padding: 0;
-		margin:  0;
-		border: none;
-		        user-select: none;
-		   -moz-user-select: none;
-		-webkit-user-select: none;
-		    -ms-user-select: none;
+	set src( e ) {
+		this.setAttribute( "src", e );
 	}
-	.equirectangular canvas, .equirectangular menu, .equirectangular menu menuitem {
-		display: block;
-	}
-	.equirectangular canvas {
-		width:  100%;
-		height: 100%;
-	}
-	.equirectangular menu {
-		position: absolute;
-		right: 0;
-		top:   0;
-		z-index: 1;
-		font: x-small/1.0 sans-serif;
-		color: #ffffff;
-		background: #303030;
-		opacity: 0.25;
-		transition: opacity 1s;
-	}
-	.equirectangular menu:hover {
-		opacity: 0.875;
-		transition: opacity 0s;
-	}
-	.equirectangular menu hr {
-		height: 1px;
-		margin: 0.5em 1.0em;
-		background: #ffffff;
-	}
-	.equirectangular menu menuitem {
-		padding: 0.5em 1.0em;
 
+	get mapping() {
+		return this.getAttribute( "mapping" );
 	}
-	.equirectangular menu menuitem:hover {
-		background: #406080;
-	}
-`;
 
-addEventListener( "DOMContentLoaded", function( ev ) {
-	const style = document.createElement( "style" );
-	style.textContent = zuho.stylesheet;
-	document.head.insertBefore( style, document.head.firstChild );
-
-	for( let _div of document.querySelectorAll( "div.equirectangular" ) ) {
-		const div = _div;
-		const img = new Image();
-		img.onload = function() {
-			const canvas = div.appendChild( document.createElement( "canvas" ) );
-			const renderer = new zuho.Renderer( canvas );
-			renderer.setImage( img );
-			new zuho.Handler( canvas, renderer );
-			new zuho.Menu   ( div,    renderer );
-		};
-		img.src = div.dataset.src;
+	set mapping( e ) {
+		this.setAttribute( "mapping", e );
 	}
-} );
+}
+
+customElements.define( "x-zuho", Element );
