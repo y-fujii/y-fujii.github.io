@@ -1,6 +1,10 @@
 // (c) Yasuhiro Fujii <y-fujii at mimosa-pudica.net>, under MIT License.
 
-export class Matrix {
+function square( x ) {
+	return x * x;
+}
+
+class Matrix {
 	static mul( n, x, y ) {
 		console.assert( x.length == n * n && y.length == n * n );
 		const z = new Float32Array( n * n );
@@ -36,7 +40,7 @@ export class Matrix {
 		z[j * n + j] = +cos;
 		return z;
 	}
-};
+}
 
 export class Renderer {
 	constructor( canvas ) {
@@ -50,9 +54,6 @@ export class Renderer {
 		const gl = this._gl =
 			canvas.getContext( "webgl", params ) ||
 			canvas.getContext( "experimental-webgl", params );
-
-		this._canvas = canvas;
-		this.resize();
 
 		this._vertShader     = gl.createShader( gl.VERTEX_SHADER );
 		this._fragShaderFast = gl.createShader( gl.FRAGMENT_SHADER );
@@ -101,16 +102,10 @@ export class Renderer {
 		this._scale    = scale;
 	}
 
-	resize() {
-		const rect = this._canvas.getBoundingClientRect();
-		this._canvas.width  = rect.width  * devicePixelRatio;
-		this._canvas.height = rect.height * devicePixelRatio;
-		this._gl.viewport( 0.0, 0.0, this._canvas.width, this._canvas.height );
-	}
-
 	render( fast ) {
 		const gl = this._gl;
 
+		gl.viewport( 0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight );
 		gl.disable( gl.BLEND );
 
 		const prog = fast ? this._progFast : this._progSlow;
@@ -155,7 +150,7 @@ export class Renderer {
 			console.log( log );
 		}
 	}
-};
+}
 
 Renderer._vertices = new Float32Array( [
 	-1.0, -1.0, +1.0, -1.0, -1.0, +1.0, +1.0, +1.0,
@@ -238,7 +233,7 @@ Renderer._vertSource = String.raw`
 	}
 `;
 
-export let Mapping = {
+export const Mapping = {
 	azPerspective: String.raw`
 		bool unproject( vec2 p, out vec3 q ) {
 			q = vec3( p, -1.0 );
@@ -369,14 +364,10 @@ export class Handler {
 		elem.addEventListener( "pointermove",   this._onPointerMove.bind( this ) );
 		elem.addEventListener( "wheel",         this._onWheel      .bind( this ) );
 		new ResizeObserver( this._onResize.bind( this ) ).observe( elem );
-		this.update( false );
+		this._onResize( null );
 	}
 
-	update( fast ) {
-		if( !fast ) {
-			this._renderer.resize();
-		}
-
+	_update( fast ) {
 		const rot = Matrix.mul( 3,
 			Matrix.rotation( 3, 1, 2, this._theta ),
 			Matrix.rotation( 3, 0, 1, this._phi   )
@@ -387,7 +378,7 @@ export class Handler {
 
 	_updateDelayed() {
 		clearTimeout( this._timer );
-		this.update( true );
+		this._update( true );
 		this._timer = setTimeout( this._onTimer.bind( this ), 250 );
 	}
 
@@ -401,8 +392,8 @@ export class Handler {
 		let xs = 0.0;
 		let ys = 0.0;
 		for( const ev of this._pointers.values() ) {
-			xs += ev.screenX;
-			ys += ev.screenY;
+			xs += ev.clientX;
+			ys += ev.clientY;
 		}
 		const xm = xs / n;
 		const ym = ys / n;
@@ -414,7 +405,7 @@ export class Handler {
 		// calculate variance.
 		let s2 = 0.0;
 		for( const ev of this._pointers.values() ) {
-			s2 += (ev.screenX - xm) * (ev.screenX - xm) + (ev.screenY - ym) * (ev.screenY - ym);
+			s2 += square( ev.clientX - xm ) + square( ev.clientY - ym );
 		}
 		const v = s2 / (n - 1);
 
@@ -422,7 +413,7 @@ export class Handler {
 	}
 
 	_onTimer( ev ) {
-		this.update( false );
+		this._update( false );
 	}
 
 	_onPointerDown( ev ) {
@@ -433,7 +424,7 @@ export class Handler {
 	_onPointerUp( ev ) {
 		this._element.releasePointerCapture( ev.pointerId );
 		this._pointers.delete( ev.pointerId );
-		this.update( false );
+		this._update( false );
 	}
 
 	_onPointerMove( ev ) {
@@ -448,37 +439,45 @@ export class Handler {
 		}
 
 		const rect = this._element.getBoundingClientRect();
-		const unit = 2.0 / Math.sqrt( rect.width * rect.height );
-		const dx = unit * (curr.x - prev.x);
-		const dy = unit * (curr.y - prev.y);
 		if( ev.shiftKey ) {
-			this._scale *= Math.exp( dx + dy );
+			const centerX = (rect.left + rect.right) / 2.0;
+			const centerY = (rect.top + rect.bottom) / 2.0;
+			const prevR = square( prev.x - centerX ) + square( prev.y - centerY );
+			const currR = square( curr.x - centerX ) + square( curr.y - centerY );
+			this._scale *= Math.sqrt( prevR / currR );
 		}
 		else {
-			this._phi   -= this._scale * dx;
-			this._theta -= this._scale * dy;
+			const scale = (2.0 * this._scale) / Math.sqrt( rect.width * rect.height );
+			this._phi   -= scale * (curr.x - prev.x);
+			this._theta -= scale * (curr.y - prev.y);
 		}
 
 		if( prev.v !== null && curr.v !== null ) {
 			this._scale *= Math.sqrt( prev.v / curr.v );
 		}
 
-		this.update( true );
+		this._update( true );
 	}
 
 	_onWheel( ev ) {
-		this._scale *= Math.exp(
-			ev.deltaY < 0.0 ? +0.1 :
-			ev.deltaY > 0.0 ? -0.1 :
-			                   0.0
-		);
+		let scale;
+		switch( ev.deltaMode ) {
+			case WheelEvent.DOM_DELTA_PAGE : scale = 1.0 /   1.0; break;
+			case WheelEvent.DOM_DELTA_LINE : scale = 1.0 /  30.0; break;
+			case WheelEvent.DOM_DELTA_PIXEL: scale = 1.0 / 720.0; break;
+		}
+		this._scale *= Math.exp( scale * ev.deltaY );
 		this._updateDelayed();
+		ev.preventDefault();
 	}
 
 	_onResize( entries ) {
-		this.update( false );
+		const rect = this._element.getBoundingClientRect();
+		this._element.width  = rect.width  * devicePixelRatio;
+		this._element.height = rect.height * devicePixelRatio;
+		this._updateDelayed();
 	}
-};
+}
 
 export class Element extends HTMLElement {
 	static get observedAttributes() {
@@ -489,7 +488,7 @@ export class Element extends HTMLElement {
 		super();
 		const shadow = this.attachShadow( { mode: "open" } );
 		const canvas = shadow.appendChild( document.createElement( "canvas" ) );
-		canvas.style.display = "block";
+		canvas.style.display = "inline-block";
 		canvas.style.width   = "100%";
 		canvas.style.height  = "100%";
 		this._renderer = new Renderer( canvas );
@@ -515,21 +514,11 @@ export class Element extends HTMLElement {
 		}
 	}
 
-	get src() {
-		return this.getAttribute( "src" );
-	}
+	get src    () { return this.getAttribute( "src"     ); }
+	get mapping() { return this.getAttribute( "mapping" ); }
 
-	set src( e ) {
-		this.setAttribute( "src", e );
-	}
-
-	get mapping() {
-		return this.getAttribute( "mapping" );
-	}
-
-	set mapping( e ) {
-		this.setAttribute( "mapping", e );
-	}
+	set src    ( e ) { this.setAttribute( "src"    , e ); }
+	set mapping( e ) { this.setAttribute( "mapping", e ); }
 }
 
 customElements.define( "x-zuho", Element );
