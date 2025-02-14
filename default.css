@@ -35,15 +35,12 @@ p, h1, h2, h3, ul, ol, dl, pre, figure {
 	margin: 0.75rem 0;
 }
 
-li > *, dt > *, dd > * {
-	margin: 0;
-}
-
 ul {
 	list-style: none;
 }
 
 li > ul, li > ol {
+	margin: 0;
 	margin-left: 1rem;
 }
 
