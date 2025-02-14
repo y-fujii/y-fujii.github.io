@@ -60,11 +60,7 @@ pre, code, a.url {
 }
 
 p, h1, h2, h3, ul, ol, dl, pre, figure {
-	margin: 0.5rem 0;
-}
-
-p:lang(ja), h1:lang(ja), h2:lang(ja), h3:lang(ja), ul:lang(ja), ol:lang(ja), dl:lang(ja), pre:lang(ja), figure:lang(ja) {
-	margin: 0.8rem 0;
+	margin: 0.75rem 0;
 }
 
 li > *, dt > *, dd > * {
@@ -139,17 +135,17 @@ body {
 	color: #101010;
 }
 
-h2, pre, figure, table.figure, h2:lang(ja), pre:lang(ja), figure:lang(ja), table.figure:lang(ja) {
+h2, pre, figure, table.figure {
 	margin: 1rem 0;
 }
 
-h1, h1:lang(ja) {
+h1 {
 	margin: 2rem 0;
 	font-size: large;
 	text-align: right;
 }
 
-h2, h3, h2:lang(ja), h3:lang(ja) {
+h2, h3 {
 	margin-top: 2rem;
 	font-size: large;
 	font-weight: bold;
