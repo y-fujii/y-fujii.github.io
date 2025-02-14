@@ -12,6 +12,7 @@
 	</head>
 <body>
 
+<nav><a href="/">Home</a></nav>
 <h1>C++ template の（部分）特殊化ができるとき、できないとき</h1>
 <p>STL はまあ普通に使う、くらいの軟弱な知識で C++ を使っていると、クラス内で関数テンプレートの特殊化をしようとしてコンパイルエラーになって、なんでここで特殊化できないんだよ〜と愚痴を言っていたら、さらに恐ろしいことに、特殊化はできないのに部分特殊化はできる場合に遭遇したりして、 C++ の闇に触れた気分になるのだけど、実はそうでもないという話（少なくとも、ユーザの側から理解するだけなら、ね）。</p>
 
@@ -142,8 +143,7 @@ class Example: public <span class="d">Base</span>&lt;<span class="d">T</span>&gt
 <p>なんだそう。おおまかには、テンプレートパラメータに依存している型や変数や式を再帰的に辿る感じ。仕様書的な複雑さはともかく、直感に反する感じではないので、使う側としてはそんなに怯える必要はない、のかな。</p>
 <p>このへん、いち C++ ユーザがどこまで理解しているべきなのか…。</p>
 
-<p><a href="../">戻る</a></p>
-<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
 
 </body>
 </html>

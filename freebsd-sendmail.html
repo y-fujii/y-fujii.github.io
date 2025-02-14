@@ -8,6 +8,7 @@
 	</head>
 <body>
 
+<nav><a href="/">Home</a></nav>
 <h1>sendmail on FreeBSD の息の根を止める</h1>
 <p>FreeBSD をインストールするとデフォルトで sendmail が起動する設定になっている。これは cron などから起動されるプログラムの一部が root へのメールで情報を送るからなのだけど、まあデスクトップ用途ではちと大げさだし、止められるなら止めたいよね、というありがちなミニマリスト精神を発揮した記録。</p>
 <p>以下、試した環境は FreeBSD 7.x 。基本的に sendmail を使うプログラムを手作業で探しただけなので、漏れがある可能性高し。</p>
@@ -64,8 +65,7 @@ $ periodic security
 + daily_status_security_chksetuid_enable=NO
 </pre>
 
-<p><a href="../">戻る</a></p>
-<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
 
 </body>
 </html>

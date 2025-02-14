@@ -4,10 +4,11 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width,initial-scale=1">
 		<title>Linux 上での closefrom と async signal safety</title>
-		<link rel="stylesheet" href="./default.css">
+		<link rel="stylesheet" href="/default.css">
 	</head>
 <body>
 
+<nav><a href="/">Home</a></nav>
 <h1>Linux 上での closefrom と async signal safety</h1>
 
 <p>*BSD や OS X, Solaris には、 <code>closefrom( lowfd )</code> という「 <code>lowfd</code> 以上の値を持つファイルディスクリプタ (以下 FD) を全て閉じる」システムコールがある。一見ちょっと微妙なインターフェイスのシステムコールだけれど、実は後述する理由でとても有用である。
@@ -135,8 +136,7 @@ void closefrom( int lowfd ) {
 	<li id="ref2"><code>[2]</code> <a class="url" href="http://www.atmarkit.co.jp/flinux/rensai/watch2008/watch08a.html">http://www.atmarkit.co.jp/flinux/rensai/watch2008/watch08a.html</a>
 </ul>
 
-<p><a href="../">cd ../</a></p>
-<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
 
 </body>
 </html>

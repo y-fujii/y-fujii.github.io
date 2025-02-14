@@ -5,7 +5,7 @@
 		<meta name="viewport" content="width=device-width,initial-scale=1">
 		<title>連続な空間での最短経路を求める</title>
 		<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_SVG"></script>
-		<link rel="stylesheet" href="./default.css">
+		<link rel="stylesheet" href="/default.css">
 		<style>
 			object {
 				width:  20em;
@@ -22,9 +22,10 @@
     \renewcommand{\)}{\right)}
 </script>
 
+<nav><a href="/">Home</a></nav>
 <h1>連続な空間での最短経路を求める</h1>
 
-<p class="figure"><object data="./img/shortest-path.svg">shortest-path.svg</object></p>
+<figure><object data="./img/shortest-path.svg">shortest-path.svg</object></figure>
 
 <p>Dijkstra 法や A* 探索なんかを格子に適用して最短経路を求めるアルゴリズムでは、最近接の 4 点の接続を考慮する場合で縦横の移動のみ、次近接の 8 点を考慮しても縦横斜め ±45° の移動しか考慮されなくて、任意角度で移動できる場合の最短経路は (そのままでは) 求められない。これをなんとかする (賢い人がなんとかした) 話。正確には最短経路アルゴリズムとは直交している話題だけどまあ。例によって専門家でも何でもないので、正確さは期待するな。</p>
 
@@ -132,8 +133,7 @@ while (d[] changed) {
 
 <p>元の離散化された空間で考えていると、移動できる方向を増やすには、反復の際に考慮する格子点をどんどん増やすしかない気がしてくるのに、一旦連続な空間に持ちこんで再度離散化すると、最近接点だけで任意方向に移動できる場合の最短経路が求まるって、何だか不思議な気がしませんか。</p>
 
-<p><a href="../"><code>cd ../</code></a></p>
-<address>Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
 
 </body>
 </html>

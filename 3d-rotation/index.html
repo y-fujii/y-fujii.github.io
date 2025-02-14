@@ -4,6 +4,23 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width,initial-scale=1">
 		<title>Improving the methods to rotate a 3D object by a 2D pointer</title>
+		<link rel="stylesheet" href="/default.css">
+		<style>
+			table, #viewport {
+				width: 100%;
+				margin: 1rem 0;
+			}
+			#viewport {
+				position: relative;
+				width: 100%;
+				padding-top: calc(200% / 3);
+			}
+			#viewport > canvas {
+				position: absolute;
+				left: 0;
+				top: 0;
+			}
+		</style>
 		<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 		<script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 		<script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.min.js"></script>
@@ -208,68 +225,6 @@
 				};
 			});
 		</script>
-		<style>
-			* {
-				margin: 0;
-				padding: 0;
-				font: inherit;
-				text-align: justify;
-				hyphens: auto;
-				list-style: none;
-			}
-			html {
-				font: 100%/1.5 serif;
-			}
-			body {
-				max-width: 48rem;
-				margin: 2rem auto;
-				padding: 1rem;
-			}
-			pre, code {
-				font-family: monospace, monospace;
-			}
-			p, ul, dl, table, #viewport {
-				margin: 1rem 0;
-			}
-			dd {
-				margin-left: 2rem;
-			}
-			h1, h2, strong {
-				font-weight: bold;
-			}
-			h2, address {
-				margin-top: 2rem;
-			}
-			h1 {
-				font-size: 150%;
-				text-align: center;
-			}
-			h2 {
-				font-size: 125%;
-			}
-			address {
-				text-align: right;
-			}
-			table {
-				width: 100%;
-				border-collapse: collapse;
-			}
-			td {
-				padding: 0 0.5rem;
-				text-align: center;
-				border: solid 1px;
-			}
-			#viewport {
-				position: relative;
-				width: 100%;
-				padding-top: calc(200% / 3);
-			}
-			#viewport > canvas {
-				position: absolute;
-				left: 0;
-				top: 0;
-			}
-		</style>
 	</head>
 <body>
 
@@ -291,6 +246,7 @@
 	\def\vv{\vec{v}}
 \)</div>
 
+<nav><a href="/">Home</a></nav>
 <h1>Improving the method to rotate a 3D object by a 2D pointer</h1>
 
 <h2>0. Abstract</h2>
@@ -300,7 +256,7 @@
 <h2>1. Demo</h2>
 
 <dl>
-	<dt>The mapping method from the screen to the virtual sphere:</dt>
+	<dt>The mapping method from the screen to the virtual sphere</dt>
 	<dd>
 		<input type="radio" name="mapping_mode" id="mapping_mode_equidistant" value="equidistant" checked>
 		<label for="mapping_mode_equidistant">Azimuthal equidistant <strong>(My proposal)</strong></label>
@@ -313,7 +269,7 @@
 		<input type="radio" name="mapping_mode" id="mapping_mode_hyperbola" value="hyperbola">
 		<label for="mapping_mode_hyperbola">Orthographic + Hyperbola (Holroyd)</label>
 	</dd>
-	<dt>The amount of rotation:</dt>
+	<dt>The amount of rotation</dt>
 	<dd>
 			<input type="radio" name="rotation_mode" id="rotation_mode_1" value="1">
 			<label for="rotation_mode_1">1&times;, path dependent</label>
@@ -360,7 +316,7 @@ $$</p>
 
 <p>Screen coodinates \( \vv \in \mathbb{R}^2 \) to the points on the unit sphere \( \vp \in \mathbb{R}^3 ,\, |\vp| = 1 \) :</p>
 
-<table>
+<table class="figure">
 	<tr>
 		<td>Azimuthal equidistant (My proposal)</td>
 		<td>$$
@@ -415,7 +371,7 @@ $$</p>
 		\vec{a} := \frac{ \vp_0 \times \vp_1 }{ | \vp_0 \times \vp_1 | }
 $$</p>
 
-<table>
+<table class="figure">
 	<tr>
 		<td>1&times;, path dependent</td>
 		<td>$$ \qq = \cos \frac{\theta}{2} + \boldsymbol{a} \sin \frac{\theta}{2} $$</td>
@@ -428,16 +384,11 @@ $$</p>
 
 <h2>6. References</h2>
 <ul>
-	<li>[0]: <a href="https://doi.org/10.20380/GI1992.18">"ARCBALL: A user interface for specifying three-dimensional orientation using a mouse"</a>, Ken Shoemake.</li>
-	<li>[1]: <a href="https://doi.org/10.1109/TVCG.2004.1260772">"Virtual Trackballs Revisited"</a>, K. Henriksen, J. Sporring, K. Hornbak.</li>
+	<li>[0] <a href="https://doi.org/10.20380/GI1992.18">"ARCBALL: A user interface for specifying three-dimensional orientation using a mouse"</a>, Ken Shoemake.</li>
+	<li>[1] <a href="https://doi.org/10.1109/TVCG.2004.1260772">"Virtual Trackballs Revisited"</a>, K. Henriksen, J. Sporring, K. Hornbak.</li>
 </ul>
 
-<address>
-	(c) Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;
-	<a rel="license" href="https://creativecommons.org/licenses/by/4.0/">
-		<img alt="CC BY" src="https://mirrors.creativecommons.org/presskit/buttons/80x15/svg/by.svg">
-	</a>
-</address>
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
 
 </body>
 </html>

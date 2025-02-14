@@ -9,6 +9,7 @@
 <body>
 
 
+<nav><a href="/">Home</a></nav>
 <h1>仮置</h1>
 <p>主に ~/tmp から救出したもの。とくに断りがなければソースは public domain 。</p>
 
@@ -81,7 +82,7 @@ test.py:
 
 <h2 id="freetype">freetype で sub-pixel sampling を有効にしたときの色付きを改善するパッチ</h2>
 <p><del>Download: <a href="./src/freetype-2.2.1-filter.patch">freetype-2.2.1-filter.patch</a> / <a href="./src/fonts.conf">fonts.conf の例</a></del></p>
-<p class="figure"><img src="./img/freetype.png"></p>
+<figure><img src="./img/freetype.png"></figure>
 <p><del><a href="http://www.grc.com/cttech.htm">これ</a>を実装してみたもの。このパッチを当てると、 rgba = rgb, bgr 以外ではまともに使えなくなる。 autohinter の利用を推奨。 hintstyle は強制的に hintslight 相当になる。ちなみに、上のスクリーンショットの日本語フォントは <a href="http://mplus-fonts.sourceforge.jp/mplus-outline-fonts/index.html">M+ 1p</a> 。</del></p>
 <p>もう上のパッチは古いです。 freetype の開発者 David Turner 氏による<a href="http://freetype.sourceforge.net/freetype2/patches/rogue-patches.html">非公式パッチ</a>があります。これに加えて、</p>
 <ul>
@@ -115,8 +116,7 @@ test.py:
 <p>複数のストリームが重なっているファイルの切り出しにも使えるはず。 -c で CRC をチェックするのでコンテナの誤認識がほぼなくなるが、 CRC の計算コードが Python なので遅い。</p>
 <p>2008/01/08: Win32 バイナリを追加。</p>
 
-<p><a href="../">戻る</a></p>
-<address>y.fujii &lt;y-fujii at mimosa-pudica.net&gt;</address>
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
 
 </body>
 </html>
