@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<title>プログラム言語の二項ビット演算はなぜ AND, OR, XOR か</title>
+		<link rel="stylesheet" href="/default.css">
+	</head>
+<body>
+
+<nav><a href="/">Home</a></nav>
+<h1>プログラミング言語のビット演算はなぜ NOT, AND, OR, XOR か</h1>
+
+<p>大半のプログラミング言語のプリミティブなビット演算は NOT, AND, OR, XOR である。
+
+<p>もしあなたが世界で初めて言語を作ったとして、 NOT, AND, OR はともかく XOR をプリミティブとして用意するかはちょっと迷うかもしれない。逆に暗号などの分野の人は、体 F<sub>2</sub> をなす AND, XOR こそが基本演算だというかもしれない。もちろん NAND 一つだけの過激派もいるだろうし、分野によっては他の頻出二項演算がありそうな気もする。
+
+<p>そんな中で、汎用のプログラミング言語が NOT, AND, OR, XOR をプリミティブとして選ぶ必然性はあるだろうか。結論からいうと、「それなりにある」というのがこの文章の趣旨である。
+
+<p><strong>注</strong>: この文章では「自明な演算」を「恒等演算および全ての引数を使わない演算」の意味で使う。 f(x, y) = &not;x などを含むことに注意。
+
+<h2>ビット演算を選ぶ</h2>
+
+<p>いったん全てを忘れ、どうやって演算を選ぶか考えてみる (証明などは後述)。
+
+<ul>
+	<li><p>まず単項演算を考える。自明でない演算は NOT しかないので、これを追加する。
+
+	<li><p>次に二項演算を考える。二項演算はすべて追加するには多すぎる。そこで「入出力のいずれか 1 つに NOT を追加することで、任意の自明でない二項演算を行える演算の集合」を考えてみる。この条件を満たす集合の最小要素数は 3 である (補題 0)。
+
+	<li><p>この最小要素数を実現する集合は複数ある。性質のよい集合を選ぶため、演算に結合性を要請してみる。条件を満たす集合は {AND, OR, XOR}, {AND, OR, XNOR} の 2 個である。
+</ul>
+
+<h2>補題と証明</h2>
+
+<p><strong>補題 0</strong> : 二項ビット演算の集合 F = {f: {0, 1}<sup>2</sup> &rarr; {0, 1}} を考える。 f(x, y) &equiv; g(y, x) のとき、 f と g を同一視する。
+
+<p style="text-align: center">F' &colone; {f(&sdot;, &sdot;), f(&not;&sdot;, &sdot;), f(&sdot;, &not;&sdot;), &not;f(&sdot;, &sdot;) | f &isin; F} .
+
+<p>F' が全ての自明でない二項ビット演算を含むとき、最小の |F| は 3 である。
+
+<p><strong>証明</strong> : 二項演算の真理値表において、 f(&not;&sdot;, &sdot;), f(&sdot;, &not;&sdot;) は行や列の入れかえ対応し、 &not;f(&sdot;, &sdot;) は値の反転に対応する。
+
+<p>各演算 (の真理値表) を頂点とし、 NOT を 1 個追加することで移り変わる演算同士を辺で結んだグラフを作る。自明な演算の除外と対称関係にある演算の同一視を行うと、下図のようになる。
+
+<pre style="line-height: 1.25; padding: 1rem">
+  OR              NAND
+⎛0 1⎞ __ ⎛1 0⎞ __ ⎛1 1⎞
+⎝1 1⎠    ⎝1 1⎠    ⎝1 0⎠
+  |        |        |
+  |        |        |
+⎛1 0⎞ __ ⎛0 1⎞ __ ⎛0 0⎞
+⎝0 0⎠    ⎝0 0⎠    ⎝0 1⎠
+ NOR               AND
+
+    ⎛0 1⎞ __ ⎛1 0⎞
+    ⎝1 0⎠    ⎝0 1⎠
+     XOR     XNOR
+</pre>
+
+<p>F に属する頂点から 1-hop 以内で全ての頂点に辿りつければ、 F' が任意の演算を含むことになる。図より、最小の |F| は 3 である。
+
+<p><strong>補題 1</strong> : 結合則を満たす二項ビット演算は、自明なものを除いて AND, OR, XOR, XNOR の 4 個である。
+
+<p><strong>証明</strong> : 力技。
+
+<pre>
+def is_associative(table):
+    for i in range(2):
+        for j in range(2):
+            for k in range(2):
+                if table[table[i][j]][k] != table[i][table[j][k]]:
+                    return False
+    return True
+
+def enumerate_associative():
+    for i in range(2):
+        for j in range(2):
+            for k in range(2):
+                for l in range(2):
+                    table = [[i, j], [k, l]]
+                    if is_associative(table):
+                        yield table
+</pre>
+
+<h2>余談</h2>
+
+<p>今みてきたような、ある集合とその上で結合則を満たす二項演算の組を半群という。このような対象を分類する試みは数学の一大分野になっている。筆者はその分野について全く無知なのだが (知っていたらこんなしょぼい記事を晒す気にはならない)、なんでも有限群は 50 年の歳月とトータル 15000 ページを超える論文の集合によって、 2004 年に分類が完成したそうである。すごい。
+
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
+
+</body>
+</html>
