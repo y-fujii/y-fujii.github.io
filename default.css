@@ -4,34 +4,6 @@
 	src: url("iosevka-fixed-curly-light.woff2");
 }
 
-@font-face {
-	font-display: swap;
-	font-family: "Source Sans 3";
-	src: url("SourceSans3-Regular.ttf.woff2");
-}
-
-@font-face {
-	font-display: swap;
-	font-family: "Source Sans 3";
-	font-weight: bold;
-	src: url("SourceSans3-Bold.ttf.woff2");
-}
-
-@font-face {
-	font-display: swap;
-	font-family: "Source Sans 3";
-	font-style: italic;
-	src: url("SourceSans3-It.ttf.woff2");
-}
-
-@font-face {
-	font-display: swap;
-	font-family: "Source Sans 3";
-	font-style: italic;
-	font-weight: bold;
-	src: url("SourceSans3-BoldIt.ttf.woff2");
-}
-
 * {
 	margin:  0;
 	padding: 0;
@@ -123,7 +95,7 @@ img, svg, object {
 }
 
 sup, sub {
-	font-size: 75%;
+	font-size: 80%;
 }
 
 /******************************************************************************/
@@ -206,6 +178,7 @@ nav:after {
 
 address {
 	margin-top: 2rem;
+	font-size: 80%;
 }
 
 .warning {
