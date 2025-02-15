@@ -92,7 +92,7 @@ img, svg, object {
 }
 
 sup, sub {
-	font-size: 80%;
+	font-size: 75%;
 }
 
 /******************************************************************************/
@@ -110,13 +110,13 @@ h2, pre, figure, table.figure {
 
 h1 {
 	margin: 2rem 0;
-	font-size: large;
+	font-size: 112.5%;
 	text-align: right;
 }
 
 h2, h3 {
 	margin-top: 2rem;
-	font-size: large;
+	font-size: 112.5%;
 	font-weight: bold;
 }
 
@@ -126,7 +126,7 @@ h2:lang(ja), h3:lang(ja) {
 
 h2 {
 	padding: 0.25rem 0;
-	border-bottom: solid 1px #c0c0c0;
+	border-bottom: solid 1px #808080;
 }
 
 a {
@@ -163,6 +163,7 @@ input[type="button"] {
 
 nav, address {
 	text-align: right;
+	font-size: 87.5%;
 }
 
 nav:before {
@@ -175,7 +176,6 @@ nav:after {
 
 address {
 	margin-top: 2rem;
-	font-size: 80%;
 }
 
 .warning {
