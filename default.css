@@ -55,6 +55,7 @@ ul > li:before {
 	width: 1rem;
 	text-align: center;
 	content: "\00b7";
+	font-family: "Iosevka Web", sans-serif;
 }
 
 dt:after {

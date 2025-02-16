@@ -9,6 +9,9 @@
 			body {
 				margin-top: 1rem;
 			}
+			h2 {
+				font-weight: normal;
+			}
 			li:lang(ja) {
 				line-height: 1.8;
 			}
@@ -16,52 +19,54 @@
 	</head>
 <body>
 
-<p>Please be careful that the large part of this site is outdated (10+ years).</p>
-<ul>
-	<li>src/ (<a href="https://github.com/y-fujii/">GitHub</a>)
-		<ul>
-			<li><a href="https://github.com/y-fujii/mimizu/">mimizu - In-air, single-stroke handwriting recognizer for VR</a></li>
-			<li><a href="https://github.com/y-fujii/ovrvnc/">ovrvnc - VNC viewer for Oculus Go</a></li>
-			<li><a href="https://github.com/y-fujii/nanore/">nanore - Tiny O(MN) regex matcher for arbitrary data types</a></li>
-			<li><a href="https://github.com/y-fujii/memol-rs/">memol - A music description lauguage</a> / <a href="/memol/tutorial/">[Draft documentation]</a></li>
-			<li><a href="https://github.com/y-fujii/rish/">rish - A Unix shell language</a></li>
-			<li><a href="https://github.com/y-fujii/zuho/">zuho.js - Equirectangular image viewer with many projection method</a> / <a href="/zuho/">[Demo]</a></li>
-			<li><a href="https://github.com/y-fujii/lattice-qcd/">Toy SU(N) lattice gauge theory simulator written by inexpert</a></li>
-			<li><a href="https://github.com/y-fujii/ssp/">ssp - C++ SIMD library with AoS &lt;-&gt; SoA conversion and math functions</a></li>
-			<li><a href="./www-checker.html">Simple CLI Web update checker</a></li>
-			<li><a href="./gimp-lch-selector.html">L*C*h color selector for GIMP</a></li>
-			<li><a href="./total-variation-resize.html">Image zooming with total variation minimization</a></li>
-			<li><a href="./src/pa_polyrec.ml">Record-like syntax extension for OCaml objects</a></li>
-			<li><a href="https://github.com/y-fujii/vmdimporter/">Vocaloid Motion Data (VMD) importer for Blender 2.5+</a></li>
-			<li><a href="./zsh-incremental.html">Incremental completion on zsh</a></li>
-			<li><a href="./src/brown.cpp">Brown noise sound generator</a></li>
-			<li><a href="./src/oggcut.py">Ogg container extractor</a></li>
-			<li><a href="./tcp-server-by-hand.html">TCP server by hand</a></li>
-			<li><a href="./comono.html#hrtf">Convert some free HRTF (head-related transfer function) to wave format</a></li>
-			<li><a href="./comono.html#freetype">A patch for freetype: Reduce color fringe due to sub-pixel sampling</a></li>
-		</ul>
-	</li>
+<p>Please be careful that the large part of this site is outdated and unmaintained (15+ years).  Most projects are just for my learning or experimental purposes.</p>
 
-	<li>text/
-		<ul>
-			<li><a href="./3d-rotation/">Improving the method to rotate a 3D object by a 2D pointer</a></li>
-			<li><a href="./bell-shaped/">Sommelier of bell-shaped functions</a></li>
-			<li><a href="./improved-oren-nayar.html">A tiny improvement of Oren-Nayar reflectance model</a></li>
-			<li><a href="./fast-gamma/">A fast approximation of the sRGB gamma function</a></li>
-			<li><a href="./cycles-edge/">A geometry based method to render silhouette edges with Blender &amp; Cycles</a></li>
-			<li><a href="./ricoh-theta.html">Play with Ricoh THETA w/o Smartphones</a></li>
-			<li lang="ja"><a href="./bitops.html">(ja) プログラミング言語のビット演算はなぜ NOT, AND, OR, XOR か</a></li>
-			<li lang="ja"><a href="./c-switch.html">(ja) switch-case の特殊な使い方</a></li>
-			<li lang="ja"><a href="./transfer.pdf">(ja) 散乱・吸収のある半無限一様媒質による反射率の近似</a> / <a href="https://github.com/y-fujii/transfer/">[source]</a></li>
-			<li lang="ja"><a href="./continuous-shortst-path.html">(ja) 連続な空間での最短経路を求める</a></li>
-			<li lang="ja"><a href="./cpp-specialization.html">(ja) C++ template の(部分)?特殊化が可能な条件</a></li>
-			<li lang="ja"><a href="./denorm.html">(ja) 浮動小数点数 Tips</a></li>
-			<li lang="ja"><a href="./linux-closefrom.html">(ja) Linux 上での  closefrom と async signal safety</a></li>
-			<li lang="ja"><a href="./unix-font.html">(ja) UNIX のフォント事情 (古)</a></li>
-			<li lang="ja"><a href="./python-tips.html">(ja) Python Tips</a></li>
-			<li lang="ja"><del><a href="./rust-tutorial/">(ja) Rust 言語チュートリアル<em>非公式</em>日本語訳 (途中) </a></del></li>
-		</ul>
-	</li>
+<h2><code>src/</code> (<a href="https://github.com/y-fujii/">GitHub</a>)</h2>
+<ul>
+	<li><a href="https://github.com/y-fujii/myrv/">myrv - Tiny RV32I core (My first HDL code)</a></li>
+	<li><a href="https://github.com/y-fujii/mimizu/">mimizu - In-air, single-stroke handwriting recognizer for VR</a></li>
+	<li><a href="https://github.com/y-fujii/ovrvnc/">ovrvnc - VNC viewer for Oculus Go</a></li>
+	<li><a href="https://github.com/y-fujii/nanore/">nanore - Tiny regex matcher for arbitrary data types</a></li>
+	<li><a href="https://github.com/y-fujii/memol-rs/">memol - A music description lauguage</a> / <a href="/memol/tutorial/">[Draft documentation]</a></li>
+	<li><a href="https://github.com/y-fujii/rish/">rish - A Unix shell language</a></li>
+	<li><a href="https://github.com/y-fujii/zuho/">zuho.js - Equirectangular image viewer with many projection method</a> / <a href="/zuho/">[Demo]</a></li>
+	<li><a href="https://github.com/y-fujii/lattice-qcd/">lattice-qcd - Toy SU(N) lattice gauge theory simulator (written by inexpert)</a></li>
+	<li><a href="https://github.com/y-fujii/ssp/">ssp - C++ SIMD library with AoS &lt;-&gt; SoA conversion and math functions</a></li>
+	<li><a href="https://github.com/y-fujii/typo2midi/">typo2midi - Linux keyboard events to MIDI messages</a></li>
+	<li><a href="https://github.com/y-fujii/mfxvnc/">mfxvnc - Experimental VNC server</a></li>
+	<li><a href="https://github.com/y-fujii/teff/">teff - Mahjong tile efficiency calculator</a></li>
+	<li><a href="https://github.com/y-fujii/topt/">topt - Tiny derivative-free optimization library</a></li>
+	<li><a href="https://github.com/y-fujii/vmdimporter/">io_import_vmd.py - Vocaloid Motion Data (VMD) importer for Blender 2.5+</a></li>
+	<li><a href="./www-checker.html">wwwchecker - Simple CLI Web update checker</a></li>
+	<li><a href="./gimp-lch-selector.html">gimp-lch-selector - L*C*h color selector for GIMP</a></li>
+	<li><a href="./total-variation-resize.html">tvresize - Image zooming with total variation minimization</a></li>
+	<li><a href="./src/pa_polyrec.ml">pa_polyrec.ml - Record-like syntax extension for OCaml objects</a></li>
+	<li><a href="./zsh-incremental.html">incr.zsh - Incremental completion on zsh</a></li>
+	<li><a href="./comono.html#brown">brown.cpp - Brown noise sound generator</a></li>
+	<li><a href="./comono.html#oggcut">oggcut.py - Ogg container extractor</a></li>
+	<li><a href="./tcp-server-by-hand.html">servByHand.py - TCP server by hand</a></li>
+	<li><a href="./comono.html#hrtf">Convert some free HRTF (head-related transfer function) to wave format</a></li>
+	<li><a href="./comono.html#freetype">A patch for freetype: Reduce color fringe due to sub-pixel sampling</a></li>
+</ul>
+
+<h2><code>txt/</code></h2>
+<ul>
+	<li><a href="./3d-rotation/">Improving the method to rotate a 3D object by a 2D pointer</a></li>
+	<li><a href="./bell-shaped/">Sommelier of bell-shaped functions</a></li>
+	<li><a href="./improved-oren-nayar.html">A tiny improvement of Oren-Nayar reflectance model</a></li>
+	<li><a href="./fast-gamma/">A fast approximation of the sRGB gamma function</a></li>
+	<li><a href="./cycles-edge/">A geometry based method to render silhouette edges with Blender &amp; Cycles</a></li>
+	<li><a href="./ricoh-theta.html">Play with Ricoh THETA w/o Smartphones</a></li>
+	<li lang="ja"><a href="./bitops.html">(ja) プログラミング言語のビット演算はなぜ NOT, AND, OR, XOR か</a></li>
+	<li lang="ja"><a href="./c-switch.html">(ja) switch-case の特殊な使い方</a></li>
+	<li lang="ja"><a href="./transfer.pdf">(ja) 散乱・吸収のある半無限一様媒質による反射率の近似</a> / <a href="https://github.com/y-fujii/transfer/">[source]</a></li>
+	<li lang="ja"><a href="./continuous-shortst-path.html">(ja) 連続な空間での最短経路を求める</a></li>
+	<li lang="ja"><a href="./cpp-specialization.html">(ja) C++ template の特殊化/部分特殊化が可能な条件</a></li>
+	<li lang="ja"><a href="./denorm.html">(ja) 浮動小数点数 Tips</a></li>
+	<li lang="ja"><a href="./linux-closefrom.html">(ja) Linux 上での  closefrom と async signal safety</a></li>
+	<li lang="ja"><a href="./unix-font.html">(ja) UNIX のフォント事情 (古)</a></li>
+	<li lang="ja"><a href="./python-tips.html">(ja) Python Tips</a></li>
+	<li lang="ja"><del><a href="./rust-tutorial/">(ja) Rust 言語チュートリアル<em>非公式</em>日本語訳 (途中) </a></del></li>
 </ul>
 
 <address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
