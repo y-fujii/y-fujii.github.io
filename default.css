@@ -40,14 +40,14 @@
 	text-decoration: none;
 }
 
-body {
+html {
 	font: 100%/1.5 "Source Sans 3", sans-serif;
 	hyphens: auto;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
 
-body:lang(ja) {
+[lang|="ja"] {
 	line-height: 1.875;
 }
 
@@ -130,7 +130,7 @@ sup, sub {
 body {
 	max-width: 42rem;
 	margin: 0 auto;
-	padding: 1rem;
+	padding: 0.5rem 1rem;
 	color: #101010;
 }
 
@@ -151,7 +151,7 @@ h2, h3 {
 }
 
 h2:lang(ja), h3:lang(ja) {
-	font-weight: normal;
+	font-weight: inherit;
 }
 
 h2 {
