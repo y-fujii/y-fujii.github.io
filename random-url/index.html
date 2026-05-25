@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<title>あなたは素の Web をみたことがあるか - Web を一様サンプリングする</title>
+		<link rel="stylesheet" href="/default.css">
+		<style>
+			#sampler {
+				margin: 2rem 0;
+				border: solid 1px #e0e0e0;
+				background: #fafafa;
+			}
+			#sampler > p {
+				line-height: 1.5;
+				text-align: center;
+			}
+		</style>
+		<script type="module">
+			const e_url_r = document.querySelector("#sampler .url_r");
+			const e_url_a = document.querySelector("#sampler .url_a");
+			const e_select = document.querySelector("#sampler select");
+
+			async function on_click(ev) {
+				try {
+					const res = await fetch(`https://random-url.mimosa-pudica.net/${e_select.value}`);
+					const url = await res.text();
+					e_url_r.href = url;
+					e_url_r.textContent = url;
+					e_url_a.href = `https://web.archive.org/web/${url}`;
+					e_url_a.textContent = "[Internet Archive]";
+				}
+				catch (err) {
+					e_url_r.href = "";
+					e_url_r.textContent = `Error: ${err}`;
+					e_url_a.href = "";
+					e_url_a.textContent = "";
+				}
+			}
+
+			document.querySelector("#sampler button").addEventListener("click", on_click);
+		</script>
+	</head>
+<body>
+
+<nav><a href="/">Home</a></nav>
+<h1>あなたは素の Web をみたことがあるか - Web を一様サンプリングする</h1>
+
+<p>Web をみるとき、多くは検索エンジンなり何なりがフィルタリング・ランキングした結果を経由している。
+
+<p>2026 年現在、一般的な単語で Web 検索した結果はろくでもない。思わず検索会社に矛先を向けたくなるが、最先端の技術で抽出された結果がこの状態なら、素の Web はもっと酷いのかもしれない。同時に、検索結果に上がってこないだけで、細々と Web サイトを更新している個人がたくさんいてもおかしくない、とも思う。
+
+<p>私たちは素の Web をみたことがない。
+
+<h2>Web を一様サンプリングする</h2>
+
+<p>素の Web とはいかなるものか。一つの試みとして、 <a href="https://commoncrawl.org/">Common Crawl</a> の URL データから一様にランダムサンプリングするプログラムを作った。もちろん真の Web の一様サンプリングからはほど遠いが、ランクづけされる前の、クローラーがみている Web の世界が体感できる。
+
+<div id="sampler">
+	<p>
+		<select>
+			<option value="2026-17-all">2026 April</option>
+			<option value="2026-17-jpn">2026 April (JP)</option>
+			<option value="2020-16-all">2020 March</option>
+			<option value="2020-16-jpn">2020 March (JP)</option>
+			<option value="2015-14-all">2015 March</option>
+		</select>
+		<button>Sample URL</button>
+	</p>
+	<p><code><a class="url_r"></a></code></p>
+	<p><code><a class="url_a"></a></code></p>
+</div>
+
+<p>サーバーは気まぐれに止まるので、動かなかったら時間をおいて再試行してみてほしい。
+
+<h2>データについて</h2>
+
+<p>サンプリング元は Common Crawl が一か月でクロールした URL のリストから、 HTTP レスポンスが 200 かつ MIME が text/html のサイトを抽出したデータである。 URL 数は 2 G/month くらい、未圧縮時のデータサイズは 0.2 TB/month くらい。しょぼいルーターとそれに差した SD カード上で動かすため、ブロック分割して圧縮したりしている。
+
+<p>Common Crawl のデータは一か月ごとに公開されているが、一か月で URL リストを一周するわけではないらしい。ランダム性を持たせつつ継続的なクロールが行われている。<a href="https://commoncrawl.github.io/cc-crawl-statistics/plots/crawloverlap">クローラーの統計データ</a>をみると、現在は三か月で一周に相当するくらいの頻度ではないかと思う。 URL によってクロール頻度の重みづけはあるようで、一か月分のデータから重複を除いてサンプリングするだけではバイアスが出る。気が向いたら対処予定。
+
+<p>他のクローラーとの違いとして、 Common Crawl は <a href="https://commoncrawl.org/faq">nofollow 属性のついたリンク先をクロールしない</a>。  Internet Archive (User-Agent: ia_archiver) を robots.txt で弾いている場合にもクロールしていない気がするが、公式の情報は見つけられなかった。この二つはユーザー投稿型サイトでの影響が大きい。
+
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
+
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<title>MIT/Apache デュアルライセンスについて</title>
+		<link rel="stylesheet" href="/default.css">
+	</head>
+<body>
+
+<nav><a href="/">Home</a></nav>
+<h1>MIT/Apache デュアルライセンスについて</h1>
+
+<p>MIT と Apache のデュアルライセンスを採用しているオープンソースプロジェクトをみかけるようになった。初出は不明だが、普及したのは <a href="https://github.com/rust-lang/rust">Rust</a> での採用がきっかけだと思う。デュアルライセンスとは、提示された二つのライセンスから利用者が好きに選んでいい、というものである。
+
+<p>筆者はこのライセンスにずっと疑問を持っていた。商用ライセンスと GPL のような組み合わせなら理解できる。 MIT ライセンスの条件は Apache ライセンスの条件より単純に弱く、事実上の包含関係にある。この二つをデュアルライセンスにする意味はあるのだろうか。
+
+<h2>目的</h2>
+
+<p>その答えは利用者と開発者の非対称性にある。 X と Y のデュアルライセンスを採用する場合、コードを利用する側の条件は <em>X or Y</em> だが、開発する側は <em>X and Y</em> という条件でコードを提供する。
+
+<p>MIT ライセンスにはコントリビュータに関する言及がない。 MIT ライセンスのコードに対して GPL のパッチを投稿し、あとから GPL を主張してコード開示を迫ったり、特許の絡むコードをコミットして特許料を請求する行為は、文面では禁止されていない。実際にその主張が通るかはさておき、昨今 (2025) のオープンソース開発スタイルでは曖昧になっている部分がある。
+
+<p>Apache ライセンスではそれらが明文化されている。条項 5 により提供されたコードは本体と同じライセンスに従う。条項 2, 3 によりコントリビュータは著作権・特許ライセンスの付与も義務づけられている。ただ、その条項がある関係で他のライセンスと組み合わせられない場合がある。
+
+<p>リポジトリの安全は保ちたい一方で、コードそのものは極力緩いライセンスで提供したい。そんな場合に MIT/Apache デュアルライセンスを採用すると、自身のリポジトリを Apache ライセンスで安全に保ちつつ、より緩い MIT ライセンスで提供できるわけだ。
+
+<p>以上のように MIT/Apache デュアルライセンスは、商用ライセンス/GPL のようなデュアルライセンスとは目的を異にしている。新しい文面を起こさずに目的のライセンスを作り出す、ある種のハックである。
+
+<h2>実際</h2>
+
+<p>実際のところ、このライセンスはどれくらい効力を発揮するだろうか。
+
+<p>いきなり話をひっくり返すが、オープンソース開発では「投稿したパッチは特記しないかぎり本体と同じライセンスに従う」という慣習ができている。これは例えば <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#6-contributions-under-repository-license">GitHub の 利用規約</a>でも "widely accepted as the norm in the open-source community" と言及されていて、慣習法として効力を持つのではないかと思う。つまり事実上、 MIT シングルライセンスでもコントリビューションに対してライセンス条件が課されている。
+
+<p>逆に Apache ライセンスであったとしても、コントリビュータが無自覚に第三者の相容れないライセンスのコードを混入させてしまうことは防げない。著作権・特許についても同様である。
+
+<p>MIT シングルライセンスで起きて MIT/Apache デュアルライセンスで回避できる問題は、実際には稀だと考えられる。こんな文章を書いておいてなんだが、筆者は文面の短い MIT シングルライセンスでいいや。
+
+<h2>免責</h2>
+
+<p>筆者は法律の専門家ではない。この文章を鵜呑みにした結果、あなたの人生が終了しても責任は持たない。素人がいい加減なこと書くなって? インターネットとはそういうものである (指摘は歓迎)。
+
+<h2>参考文献</h2>
+
+<ul>
+	<li><a href="https://licenses.opensource.jp/MIT/MIT.html">MIT License 日本語参考訳</a>
+	<li><a href="https://licenses.opensource.jp/Apache-2.0/Apache-2.0.html">Apache License, Version 2.0 日本語参考訳</a>
+	<li><a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service#6-contributions-under-repository-license">GitHub Terms of Service - GitHub Docs</a>
+</ul>
+
+<address>&copy; Yasuhiro Fujii &lt;y-fujii at mimosa-pudica.net&gt;, under <a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC-BY</a>.</address>
+
+</body>
+</html>

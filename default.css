@@ -181,10 +181,16 @@ table.figure td {
 	border: solid 1px #a0a0a0;
 }
 
-input[type="button"] {
-	margin:  0 0.5rem;
+input[type="button"], button, select {
+	height: 1.75rem;
+	margin:  0.25rem;
 	padding: 0 calc(0.5rem - 1px);
 	border: solid 1px #c0c0c0;
+	background: #f0f0f0;
+}
+
+input[type="button"]:active, button:active {
+	background: #d0e8ff;
 }
 
 nav, address {
