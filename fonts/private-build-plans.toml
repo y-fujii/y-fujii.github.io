@@ -1,0 +1,8 @@
+[buildPlans.IosevkaCustom]
+family = "Iosevka Custom"
+spacing = "fixed"
+serifs = "sans"
+noCvSs = true
+noLigation = true
+exportGlyphNames = false
+subset.include.ranges = [[0x00, 0xff], [0x300, 0x3ff], [0x2000, 0x23ff]]
